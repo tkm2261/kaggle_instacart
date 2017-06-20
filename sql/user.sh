@@ -1,6 +1,6 @@
 
 # user_fund
-bq query --allow_large_results --destination_table "instacart.user_fund" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_fund" --flatten_results --replace "
 SELECT
   user_id,
   count(1) as user_item_cnt,
@@ -13,6 +13,10 @@ SELECT
   AVG(days_since_prior_order) as avg_days_since_prior_order,
   MAX(days_since_prior_order) as max_days_since_prior_order,
   MIN(days_since_prior_order) as min_days_since_prior_order,
+  AVG(days_since_prior_order) as avg_days_since_prior_order,
+  MAX(order_hour_of_day) as max_order_hour_of_day,
+  MIN(order_hour_of_day) as min_order_hour_of_day,
+  AVG(order_hour_of_day) as avg_order_hour_of_day,
   AVG(reordered) as avg_reordered
 FROM
   [instacart.df_prior]
@@ -20,7 +24,7 @@ GROUP BY
   user_id
 "
 
-bq query --allow_large_results --destination_table "instacart.user_freq" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_freq" --flatten_results --replace "
 SELECT
   user_id,
   count(1) as order_cnt,
@@ -35,7 +39,7 @@ GROUP BY
   user_id
 "
 
-bq query --allow_large_results --destination_table "instacart.user_dow" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_dow" --flatten_results --replace "
 SELECT
   user_id,
   sum(CASE WHEN order_dow = 0  THEN 1 ELSE 0 END) AS  order_dow_0,
@@ -44,14 +48,22 @@ SELECT
   sum(CASE WHEN order_dow = 3  THEN 1 ELSE 0 END) AS  order_dow_3,
   sum(CASE WHEN order_dow = 4  THEN 1 ELSE 0 END) AS  order_dow_4,
   sum(CASE WHEN order_dow = 5  THEN 1 ELSE 0 END) AS  order_dow_5,
-  sum(CASE WHEN order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6
+  sum(CASE WHEN order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6,
+
+  avg(CASE WHEN order_dow = 0  THEN reordered ELSE null END) AS  reorder_dow_0,
+  avg(CASE WHEN order_dow = 1  THEN reordered ELSE null END) AS  reorder_dow_1,
+  avg(CASE WHEN order_dow = 2  THEN reordered ELSE null END) AS  reorder_dow_2,
+  avg(CASE WHEN order_dow = 3  THEN reordered ELSE null END) AS  reorder_dow_3,
+  avg(CASE WHEN order_dow = 4  THEN reordered ELSE null END) AS  reorder_dow_4,
+  avg(CASE WHEN order_dow = 5  THEN reordered ELSE null END) AS  reorder_dow_5,
+  avg(CASE WHEN order_dow = 6  THEN reordered ELSE null END) AS  reorder_dow_6
 FROM
   [instacart.df_prior]
 GROUP BY
   user_id
 "
 
-bq query --allow_large_results --destination_table "instacart.user_hour" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_hour" --flatten_results --replace "
 SELECT
   user_id,
   sum(CASE WHEN order_hour_of_day = 0  THEN 1 ELSE 0 END) AS order_hour_of_day_0,
@@ -84,7 +96,7 @@ GROUP BY
   user_id
 "
 
-bq query --allow_large_results --destination_table "instacart.user_depart" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_depart" --flatten_results --replace "
 SELECT
   user_id,
   sum(CASE WHEN department_id = 1  THEN 1 ELSE 0 END) AS department_id_1,
@@ -114,7 +126,7 @@ GROUP BY
   user_id
 "
 
-bq query --allow_large_results --destination_table "instacart.dmt_user" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user" --flatten_results --replace "
 SELECT
   *
 FROM

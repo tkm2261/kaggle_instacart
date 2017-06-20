@@ -197,6 +197,7 @@ def features(selected_orders, labels_given=False):
 
 df_train, labels = features(train_orders, labels_given=True)
 
+
 f_to_use = ['user_total_orders', 'user_total_items', 'total_distinct_items',
             'user_average_days_between_orders', 'user_average_basket',
             'order_hour_of_day', 'days_since_prior_order', 'days_since_ratio',

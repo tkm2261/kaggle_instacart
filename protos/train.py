@@ -9,7 +9,7 @@ from multiprocessing import Pool
 from sklearn.model_selection import GridSearchCV, ParameterGrid, StratifiedKFold, cross_val_predict
 import xgboost as xgb
 from lightgbm.sklearn import LGBMClassifier
-from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.metrics import log_loss, roc_auc_score, f1_score
 import gc
 from logging import getLogger
 logger = getLogger(None)
@@ -18,7 +18,25 @@ from tqdm import tqdm
 
 from load_data import load_train_data, load_test_data
 
+now_order_ids = None
+THRESH = 0.176
+
+
+def f1_metric(label, pred):
+    return 'auc', roc_auc_score(label, pred), True
+    """
+    df = pd.DataFrame({'order_id': now_order_ids, 'label': label, 'pred': pred > THRESH})
+    scores = []
+    for order_id in df.order_id.unique():
+        tmp = df[df['order_id'] == order_id]
+        sc = f1_score(tmp['label'].values, tmp['pred'].values)
+        scores.append(sc)
+    scores = df.groupby('order_id').apply(lambda tmp: f1_score(tmp['label'], tmp['pred']))
+    return 'f1', np.mean(scores), True
+    """
+
 if __name__ == '__main__':
+
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
 
     log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
@@ -35,8 +53,18 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     logger.info('load start')
+    df = pd.read_csv('train_data_idx.csv')
+    order_idx = df.order_id.values
+    tmp = df.groupby('order_id')[['order_id']].count()
+    tmp.columns = ['weight']
+    df = pd.merge(df, tmp.reset_index(), how='left', on='order_id')
+    sample_weight = 1 / df['weight'].values
+
     x_train, y_train, cv = load_train_data()
-    x_train = x_train.fillna(-100).values.astype(np.float32)
+
+    fillna_mean = x_train.mean()
+    x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
+    #x_train[np.isnan(x_train)] = -100
     gc.collect()
     """
     with open('train_word.pkl', 'rb') as f:
@@ -45,21 +73,22 @@ if __name__ == '__main__':
     x_train = np.c_[x_train, x]
     gc.collect()
     """
+    #{'max_depth': 5, 'min_split_gain': 0, 'reg_alpha': 1, 'colsample_bytree': 0.7, 'seed': 6436, 'learning_rate': 0.1, 'reg_lambda': 1, 'silent': True, 'subsample': 0.9, 'n_estimators': 891}
     logger.info('load end')
-    all_params = {'max_depth': [10],
+    all_params = {'max_depth': [5],
                   'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
                   'n_estimators': [100000],
-                  #'min_child_weight': [10],
-                  'colsample_bytree': [0.8],
+                  'min_child_weight': [10],
+                  'colsample_bytree': [0.7],
                   #'boosting_type': ['dart'],  # ['gbdt'],
                   #'xgboost_dart_mode': [False],
-                  'num_leaves': [96],
+                  #'num_leaves': [96],
                   'subsample': [0.9],
                   #'min_child_samples': [10],
                   #'reg_alpha': [1],
-                  #'reg_lambda': [0],
+                  #'reg_lambda': [1],
                   #'max_bin': [500],
-                  #'min_split_gain': [0.1],
+                  'min_split_gain': [0],
                   'silent': [True],
                   'seed': [6436]
                   }
@@ -82,11 +111,18 @@ if __name__ == '__main__':
             trn_y = y_train[train]
             val_y = y_train[test]
 
+            trn_w = sample_weight[train]
+            val_w = sample_weight[test]
+
+            now_order_ids = order_idx[test]
+
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
+                    sample_weight=trn_w,
+                    eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=True,
-                    # eval_metric='logloss',
+                    eval_metric=f1_metric,
                     early_stopping_rounds=30
                     )
             pred = clf.predict_proba(val_x)[:, 1]
@@ -127,7 +163,9 @@ if __name__ == '__main__':
     gc.collect()
 
     clf = LGBMClassifier(**min_params)
-    clf.fit(x_train, y_train)
+    clf.fit(x_train, y_train,
+            sample_weight=sample_weight
+            )
     with open('model.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)
     del x_train
@@ -142,7 +180,7 @@ if __name__ == '__main__':
     with open('features_train.py', 'w') as f:
         f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
 
-    x_test = load_test_data().fillna(-100).values
+    x_test = load_test_data().fillna(fillna_mean).values
     """
     with open('test_word.pkl', 'rb') as f:
         x = pickle.load(f).astype(np.float32)
