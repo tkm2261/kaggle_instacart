@@ -1,4 +1,4 @@
-bq query --max_rows 1  --allow_large_results --destination_table "instacart.cum_orders" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "work.tmp1" --flatten_results --replace "
 SELECT
   user_id,
   order_id,
@@ -8,8 +8,31 @@ SELECT
   SUM(days_since_prior_order) OVER (PARTITION BY user_id ORDER BY order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_days
 FROM
   [instacart.orders]
-order by
-  user_id, order_number
+"
+
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.cum_orders" --flatten_results --replace "
+SELECT
+  a.user_id user_id,
+  a.order_id order_id,
+  a.eval_set eval_set,
+  a.order_number order_number,
+  a.days_since_prior_order days_since_prior_order,
+  a.cum_days cum_days,
+  b.max_cum_days max_cum_days,
+  b.max_cum_days - a.cum_days as last_buy
+FROM
+  [work.tmp1] as a
+LEFT OUTER JOIN
+(
+SELECT
+  user_id, max(cum_days) as max_cum_days
+FROM
+  [work.tmp1]
+GROUP BY
+  user_id
+) as b
+ON
+  a.user_id = b.user_id
 "
 
 
@@ -242,6 +265,8 @@ SELECT
   l.cum_days,
   u.*,
   i.*,
+  u2.*,
+  i2.*,
   ui.*,
   la.*,
   ld.*,
@@ -261,6 +286,14 @@ LEFT OUTER JOIN
   [instacart.dmt_item] as i
 ON
   i.i1_product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user2_30] as u2
+ON
+  u2.u2_user_id = o.user_id
+LEFT OUTER JOIN
+  [instacart.dmt_item2_30] as i2
+ON
+  i2.i2_product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.dmt_user_item] as ui
 ON
@@ -307,6 +340,8 @@ SELECT
   l.cum_days,
   u.*,
   i.*,
+  u2.*,
+  i2.*,
   ui.*,
   la.*,
   ld.*,
@@ -326,6 +361,14 @@ LEFT OUTER JOIN
   [instacart.dmt_item] as i
 ON
   i.i1_product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user2_30] as u2
+ON
+  u2.u2_user_id = o.user_id
+LEFT OUTER JOIN
+  [instacart.dmt_item2_30] as i2
+ON
+  i2.i2_product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.dmt_user_item] as ui
 ON
@@ -359,3 +402,4 @@ bq extract --compression GZIP instacart.dmt_test_only_rebuy gs://kaggle_quora/da
 
 rm -rf ../data/
 gsutil -m cp -r gs://kaggle_quora/data/ ../
+

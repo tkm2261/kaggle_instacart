@@ -16,7 +16,7 @@ def aaa(folder):
 
     print('start1', time.time() - t)
     df = pd.read_csv(folder + 'train_data_idx.csv')
-
+    df.drop('target', axis=1, inplace=True)
     print('start2', time.time() - t)
     with open(folder + 'user_split.pkl', 'rb') as f:
         cv = pickle.load(f)
@@ -63,18 +63,15 @@ from multiprocessing import Pool
 for thresh in range(100, 200):
     thresh /= 1000
     df['pred_label'] = df['pred'] > thresh
-    df['aaa'] = (df['label'] == 1) & (df['pred_label'] == 1)
+    df['tp'] = (df['label'] == 1) & (df['pred_label'] == 1)
+    df['tn'] = (df['label'] == 1) & (df['pred_label'] == 0)
     # scores = df.groupby('order_id', sort=False).apply(lambda tmp: f1_score(tmp['label'], tmp['pred_label']))
     scores = []
+    """
     aaa = df.values
     p = Pool()
     scores = list(p.map(bbb, [aaa[idx, 5:] for idx in idxes]))
     p.close()
     p.join()
     """
-    for idx in idxes:
-        tmp = aaa[idx, 5:].astype(int)
-        sc = f1_score(tmp[:, 0], tmp[:, 1])
-        scores.append(sc)
-    """
-    print(thresh, f1_score(df.label.values, df.pred_label.values), df.aaa.sum(), np.mean(scores))
+    print(thresh, f1_score(df.label.values, df.pred_label.values), df.tp.sum(), df.tn.sum(), np.mean(scores))

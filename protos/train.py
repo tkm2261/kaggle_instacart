@@ -54,26 +54,25 @@ if __name__ == '__main__':
 
     logger.info('load start')
     df = pd.read_csv('train_data_idx.csv')
+    weight_col = 'order_id'
+
     order_idx = df.order_id.values
-    tmp = df.groupby('order_id')[['order_id']].count()
+    tmp = df.groupby(weight_col)[[weight_col]].count()
     tmp.columns = ['weight']
-    df = pd.merge(df, tmp.reset_index(), how='left', on='order_id')
+    df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
     sample_weight = 1 / df['weight'].values
 
+    ###
     x_train, y_train, cv = load_train_data()
 
     fillna_mean = x_train.mean()
+    with open('fillna_mean.pkl', 'wb') as f:
+        pickle.dump(fillna_mean, f, -1)
+
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
     #x_train[np.isnan(x_train)] = -100
     gc.collect()
-    """
-    with open('train_word.pkl', 'rb') as f:
-        x = pickle.load(f).astype(np.float32)
 
-    x_train = np.c_[x_train, x]
-    gc.collect()
-    """
-    #{'max_depth': 5, 'min_split_gain': 0, 'reg_alpha': 1, 'colsample_bytree': 0.7, 'seed': 6436, 'learning_rate': 0.1, 'reg_lambda': 1, 'silent': True, 'subsample': 0.9, 'n_estimators': 891}
     logger.info('load end')
     all_params = {'max_depth': [5],
                   'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
@@ -179,6 +178,9 @@ if __name__ == '__main__':
     logger.info('imp use {} {}'.format(imp_use.shape, n_features))
     with open('features_train.py', 'w') as f:
         f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
+
+    with open('fillna_mean.pkl', 'rb') as f:
+        fillna_mean = pickle.load(f)
 
     x_test = load_test_data().fillna(fillna_mean).values
     """
