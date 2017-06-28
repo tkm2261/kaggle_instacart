@@ -28,7 +28,7 @@ LEFT OUTER JOIN
 ON
   a.order_id = b.order_id
 WHERE
-  b.last_buy <= 31 
+  b.last_buy <= 7
 "
 
 bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_fund" --flatten_results --replace "
@@ -157,7 +157,7 @@ GROUP BY
   user_id
 "
 
-bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user2_30" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user2_7" --flatten_results --replace "
 SELECT
   *
 FROM

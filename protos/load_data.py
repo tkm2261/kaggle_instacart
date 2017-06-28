@@ -30,31 +30,56 @@ def read_csv(filename):
 
     def drop(col_name):
         cols = [col for col in df.columns.values if re.search(col_name, col) is not None]
-        #logger.info('{} {}'.format(col_name, cols))
+        logger.debug('{} {}'.format(col_name, cols))
         df.drop(cols, axis=1, inplace=True)
+
     normarize('u_u2_order_dow')
     normarize('u_u3_order_hour_of_day')
     normarize('u_u4_department_id')
+    gc.collect()
 
-    drop('u2_u2_order_dow')
+    normarize('u2_u2_order_dow')
     drop('u2_u3_order_hour_of_day')
     drop('u2_u4_department_id')
+
+    drop('u3_u2_order_dow')
+    drop('u3_u3_order_hour_of_day')
+    drop('u3_u4_department_id')
+
+    drop('u4_u2_order_dow')
+    drop('u4_u3_order_hour_of_day')
+    drop('u4_u4_department_id')
+    gc.collect()
 
     normarize('i_i2_order_dow')
     normarize('i_i3_order_hour_of_day')
     normarize('i_i4_department_id')
 
-    drop('i2_i2_order_dow')
+    normarize('i2_i2_order_dow')
     drop('i2_i3_order_hour_of_day')
     drop('i2_i4_department_id')
 
+    gc.collect()
+    drop('i3_i2_order_dow')
+    drop('i3_i3_order_hour_of_day')
+    drop('i3_i4_department_id')
+
+    drop('^i4')
+
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
+    gc.collect()
 
     cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
     df['since_last_order'] = (df['o_cum_days'] - df['l_cum_days']).astype(np.float32)
     df['since_last_aisle'] = (df['o_cum_days'] - df['la_cum_days']).astype(np.float32)
     df['since_last_depart'] = (df['o_cum_days'] - df['ld_cum_days']).astype(np.float32)
+
+    df['since_last_visit_order'] = (df['o_order_number'] - df['l_max_order_number']).astype(np.float32)
+    df['since_last_visit_aisle'] = (df['o_order_number'] - df['la_max_order_number']).astype(np.float32)
+    df['since_last_visit_depart'] = (df['o_order_number'] - df['ld_max_order_number']).astype(np.float32)
+
+    df.drop(cum_cols, axis=1, inplace=True)
 
     gc.collect()
     return df.astype(np.float32)
@@ -66,7 +91,7 @@ def read_multi_csv(folder):
     logger.info('file_num: %s' % len(paths))
     df = None  # pd.DataFrame()
 
-    p = Pool()
+    p = Pool(4)
     df = pd.concat(p.map(read_csv, paths), ignore_index=True, copy=False)
     p.close()
     p.join()
@@ -102,7 +127,6 @@ def load_train_data():
     with open('train_data.pkl', 'rb') as f:
         df = pickle.load(f)
     """
-
     logger.info('load base data')
     with open('train_baseline.pkl', 'rb') as f:
         df2, _ = pickle.load(f)
@@ -194,12 +218,6 @@ def load_test_data():
     logger.info('etl data')
     id_cols = [col for col in df.columns.values if re.search('_id$', col) is not None]
     df.drop(id_cols, axis=1, inplace=True)
-
-    cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
-    df['since_last_order'] = df['o_cum_days'] - df['l_cum_days']
-    df['since_last_aisle'] = df['o_cum_days'] - df['la_cum_days']
-    df['since_last_depart'] = df['o_cum_days'] - df['ld_cum_days']
-    #df.drop(cum_cols, axis=1, inplace=True)
 
     logger.info('dump data')
     with open(TEST_DATA_PATH, 'wb') as f:

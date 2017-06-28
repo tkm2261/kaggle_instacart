@@ -105,16 +105,19 @@ for i in range(len(ra) - 1):
     list_thresh.append(max_thresh)
     print(ra[i], ra[i + 1], max_thresh, max_score)
 
+with open('num_thresh.pkl', 'wb') as f:
+    pickle.dump((ra, list_thresh), f, -1)
 
-def predict(val):
+
+def predict(val, num):
     if np.isnan(val):
         return False
     for i in range(len(ra) - 1):
-        if val >= ra[i] and val < ra[i + 1]:
+        if num >= ra[i] and num < ra[i + 1]:
             return val > list_thresh[i]
     raise
 
-_df['pred_label'] = _df['pred'].apply(predict)
+_df['pred_label'] = _df.apply(lambda row: predict(row.pred, row.cnt_order), axis=1)
 sc = f1_score(_df.label.values, _df.pred_label.values)
 
 print(sc)

@@ -1,7 +1,9 @@
 import pickle
 import pandas as pd
+import numpy as np
 from sklearn.metrics import f1_score
 import time
+import pickle
 
 
 def aaa(folder):
@@ -20,16 +22,39 @@ df = aaa('./')
 #df = df.append(df2)
 #df = df.groupby(['order_id', 'product_id', 'user_id']).max().reset_index()
 
+df['order_id'] = df['order_id'].astype(int)
+df_order = df.groupby('order_id')['pred'].agg({'cnt_order': len})
+map_cnt_order = df_order.to_dict()['cnt_order']
 
-thresh = 0.194
+with open('num_thresh.pkl', 'rb') as f:
+    ra, list_thresh = pickle.load(f)
+
+
+def predict(val, num):
+    if np.isnan(val):
+        return False
+    for i in range(len(ra) - 1):
+        if num >= ra[i] and num < ra[i + 1]:
+            return val > list_thresh[i]
+    raise
+
+map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
+
+
+#thresh = 0.194
 map_result = {}
+df = df.sort_values(['user_id', 'pred'], ascending=False)
 for row in df.values:
     order_id, user_id, product_id, pred = row
     order_id = int(order_id)
+    num = map_cnt_order[order_id]
     if order_id not in map_result:
         map_result[order_id] = []
 
-    if pred > thresh:
+    mean = int(tmp['mean'])
+    std = tmp['std']
+    th = mean + std
+    if predict(pred, num) and len(map_result[order_id]) < th:
         map_result[order_id].append(str(int(product_id)))
 
 f = open('submit.csv', 'w')

@@ -109,7 +109,7 @@ GROUP BY
   product_id
 "
 
-bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_item2_30" --flatten_results --replace "  
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_item2_7" --flatten_results --replace "  
 SELECT
   *
 FROM

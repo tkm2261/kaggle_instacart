@@ -249,7 +249,7 @@ GROUP BY
 "
 
 
-bq query --max_rows 1  --maximum_billing_tier 2 --allow_large_results --destination_table "instacart.dmt_train_only_rebuy" --flatten_results --replace "
+bq query --max_rows 1  --maximum_billing_tier 3 --allow_large_results --destination_table "instacart.dmt_train_only_rebuy" --flatten_results --replace "
 SELECT
   CASE WHEN tr.order_number is not null THEN 1 ELSE 0 END as target,
   o.user_id,
@@ -262,11 +262,15 @@ SELECT
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.cum_days,
-  l.cum_days,
+  l.*,
   u.*,
   i.*,
   u2.*,
   i2.*,
+  u3.*,
+  i3.*,
+  u4.*,
+  i4.*,
   ui.*,
   la.*,
   ld.*,
@@ -294,6 +298,22 @@ LEFT OUTER JOIN
   [instacart.dmt_item2_30] as i2
 ON
   i2.i2_product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user2_14] as u3
+ON
+  u3.u2_user_id = o.user_id
+LEFT OUTER JOIN
+  [instacart.dmt_item2_14] as i3
+ON
+  i3.i2_product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user2_7] as u4
+ON
+  u4.u2_user_id = o.user_id
+LEFT OUTER JOIN
+  [instacart.dmt_item2_7] as i4
+ON
+  i4.i2_product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.dmt_user_item] as ui
 ON
@@ -337,11 +357,15 @@ SELECT
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.cum_days,
-  l.cum_days,
+  l.*,
   u.*,
   i.*,
   u2.*,
   i2.*,
+  u3.*,
+  i3.*,
+  u4.*,
+  i4.*,
   ui.*,
   la.*,
   ld.*,
@@ -369,6 +393,22 @@ LEFT OUTER JOIN
   [instacart.dmt_item2_30] as i2
 ON
   i2.i2_product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user2_14] as u3
+ON
+  u3.u2_user_id = o.user_id
+LEFT OUTER JOIN
+  [instacart.dmt_item2_14] as i3
+ON
+  i3.i2_product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user2_7] as u4
+ON
+  u4.u2_user_id = o.user_id
+LEFT OUTER JOIN
+  [instacart.dmt_item2_7] as i4
+ON
+  i4.i2_product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.dmt_user_item] as ui
 ON

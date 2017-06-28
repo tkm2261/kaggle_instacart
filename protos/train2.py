@@ -20,62 +20,26 @@ from load_data import load_train_data, load_test_data
 
 now_order_ids = None
 THRESH = 0.194
-
-
-def ttt():
-    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
-    with open('user_split.pkl', 'rb') as f:
-        cv = pickle.load(f)
-
-    list_cv = []
-    user_ids = df['user_id']
-
-    for train, test in cv[: 1]:
-        trn = user_ids.isin(train)
-        val = user_ids.isin(test)
-        list_cv.append((trn, val))
-
-    df_val = df.loc[val, :].copy()
-    df_val['idx'] = np.arange(df_val.shape[0], dtype=int)
-    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id'])
-    df = df[df['user_id'].isin(test)].copy()
-    df['target'] = 1
-    df = pd.merge(df, df_val, how='outer', on=['order_id', 'user_id', 'product_id'])
-    df['label'] = df['target'] == 1
-    df['pred_label'] = np.zeros(df.shape[0])
-    df_val['idx'] = df_val['idx'].fillna(100000000)
-    return df.sort_values('idx').reset_index(drop=True)
-
-#val_data = ttt()
-
-
-def _f1_metric(label, pred):
-    pred = pred > THRESH
-    val_data.loc[np.arange(pred.shape[0], dtype=int), 'pred_label'] = pred
-
-    sc = f1_score(val_data.label.values.astype(np.bool), val_data.pred_label.values.astype(np.bool))
-    return 'f1', sc, True
+val_data = None
+cv_idx = None
 
 
 def f1_metric(label, pred):
-    return 'auc', roc_auc_score(label, pred), True
-    """
-    df = pd.DataFrame({'order_id': now_order_ids, 'label': label, 'pred': pred > THRESH})
-    scores = []
-    for order_id in df.order_id.unique():
-        tmp = df[df['order_id'] == order_id]
-        sc = f1_score(tmp['label'].values, tmp['pred'].values)
-        scores.append(sc)
-    scores = df.groupby('order_id').apply(lambda tmp: f1_score(tmp['label'], tmp['pred']))
-    return 'f1', np.mean(scores), True
-    """
+    pred = pred > THRESH
+
+    df = val_data[cv_idx].copy()
+    df['label'] = label
+    df['pred_label'] = pred
+
+    sc = f1_score(df.label.values.astype(np.bool), df.pred_label.values.astype(np.bool))
+    return 'f1', sc, True
 
 if __name__ == '__main__':
 
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
 
     log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
-    handler = FileHandler('train.py.log', 'w')
+    handler = FileHandler('train2.py.log', 'w')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
@@ -96,12 +60,13 @@ if __name__ == '__main__':
     tmp.columns = ['weight']
     df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
     sample_weight = 1 / df['weight'].values
-
+    val_data = df
+    """
     ###
     x_train, y_train, cv = load_train_data()
 
     fillna_mean = x_train.mean()
-    with open('fillna_mean.pkl', 'wb') as f:
+    with open('fillna_mean2.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
 
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
@@ -140,6 +105,8 @@ if __name__ == '__main__':
         list_best_iter = []
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
+            cv_idx = test
+
             trn_x = x_train[train]
             val_x = x_train[test]
             trn_y = y_train[train]
@@ -152,11 +119,11 @@ if __name__ == '__main__':
 
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
-                    sample_weight=trn_w,
+                    # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=True,
-                    eval_metric='auc',
+                    eval_metric=f1_metric,  # 'auc',
                     early_stopping_rounds=30
                     )
             pred = clf.predict_proba(val_x)[:, 1]
@@ -172,10 +139,10 @@ if __name__ == '__main__':
             else:
                 list_best_iter.append(params['n_estimators'])
 
-            with open('train_cv_pred.pkl', 'wb') as f:
+            with open('train2_cv_pred.pkl', 'wb') as f:
                 pickle.dump(pred, f, -1)
 
-        with open('train_cv_tmp.pkl', 'wb') as f:
+        with open('train2_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
         logger.info('trees: {}'.format(list_best_iter))
@@ -200,13 +167,13 @@ if __name__ == '__main__':
     clf.fit(x_train, y_train,
             sample_weight=sample_weight
             )
-    with open('model.pkl', 'wb') as f:
+    with open('model_2.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
-
+    """
     ###
-    with open('model.pkl', 'rb') as f:
+    with open('model_2.pkl', 'rb') as f:
         clf = pickle.load(f)
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
     n_features = imp.shape[0]
@@ -215,7 +182,7 @@ if __name__ == '__main__':
     with open('features_train.py', 'w') as f:
         f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
 
-    with open('fillna_mean.pkl', 'rb') as f:
+    with open('fillna_mean2.pkl', 'rb') as f:
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data().fillna(fillna_mean).values
@@ -229,5 +196,5 @@ if __name__ == '__main__':
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
     p_test = clf.predict_proba(x_test)
-    with open('test_tmp.pkl', 'wb') as f:
+    with open('test2_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)

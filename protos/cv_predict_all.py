@@ -11,33 +11,20 @@ warnings.filterwarnings('ignore')
 def aaa(folder):
     t = time.time()
     print('start', time.time() - t)
-    with open(folder + 'train_cv_pred.pkl', 'rb') as f:
+    with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)
-    # with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
-    #    pred = pickle.load(f)
 
     print('start1', time.time() - t)
     df = pd.read_csv(folder + 'train_data_idx.csv')
     df.drop('target', axis=1, inplace=True)
     print('start2', time.time() - t)
-    with open(folder + 'user_split.pkl', 'rb') as f:
-        cv = pickle.load(f)
-
-    list_cv = []
-    user_ids = df['user_id']
-
-    for train, test in cv[: 1]:
-        trn = user_ids.isin(train)
-        val = user_ids.isin(test)
-        list_cv.append((trn, val))
-
-    df_val = df.loc[val, :].copy()
+    df_val = df
     df_val['pred'] = pred
 
     print('start3', time.time() - t)
 
     df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id'])
-    df = df[df['user_id'].isin(test)].copy()
+
     df['target'] = 1
 
     print('start4', time.time() - t)
