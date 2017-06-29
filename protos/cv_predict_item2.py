@@ -117,44 +117,107 @@ def add_none(num, sum_pred, safe):
         return ['None']
 
 
-def sss(map_pred, thresh, safe):
+def exp_f1(label, pred):
+
+    tp = sum(pred[i] for i in range(len(pred)) if label[i])
+    fp = sum(pred[i] for i in range(len(pred)) if not label[i])
+    fn = sum(1 - pred[i] for i in range(len(pred)) if label[i])
+
+    f1 = 2 * tp / (2 * tp + fn + fp)
+    return f1
+
+
+def search(pred):
+    if len(pred) == 0:
+        return 0
+
+    fp = np.sum(pred)
+    fn = 0.
+    tp = 0.
+
+    f1 = 2 * tp / (2 * tp + fn + fp)
+
+    for i, p in enumerate(pred):
+        fp -= p
+        fn += (1 - p)
+        tp += p
+        _f1 = 2 * tp / (2 * tp + fn + fp)
+
+        if _f1 > f1:
+            f1 = _f1
+        else:
+            break
+    return i
+
+np.random.seed(0)
+
+
+def get_y_true(vals):
+    y_true = [product_id
+              for product_id, pred_val, mean, std in vals if pred_val > np.random.uniform()]
+    if len(y_true) == 0:
+        y_true = ['None']
+    return y_true
+
+from tqdm import tqdm
+
+
+def sss(map_pred):
     res = []
-    for order_id in sorted(map_pred.keys()):
+    for order_id in tqdm(sorted(map_pred.keys())):
         vals = map_pred[order_id]
-        pred = []
-        sum_pred = 0.
-        for product_id, pred_val, mean, std in vals:
-            if len(pred) > mean:
-                break
+        sum_pred = sum(pred_val for _, pred_val, _, _ in vals)
+        if sum_pred < 1:
+            vals += [('None', 1 - sum_pred, 0, 0)]
+            vals = sorted(vals, key=lambda x: x[1], reverse=True)
+        items = [product_id for product_id, _, _, _ in vals]
+        scenario = [get_y_true(vals) for _ in range(1000)]
 
-            if pred_val > thresh:
-                pred.append(product_id)
-                sum_pred += pred_val
-
-        if sum_pred > 0:
-            sum_pred = 2 * sum_pred / (len(pred) + sum_pred)
-        pred += add_none(len(pred), sum_pred, safe)
-        ans = map_result.get(order_id, ['None'])
-
-        res.append(multilabel_fscore(ans, pred))
+        scores = []
+        for i in range(len(vals)):
+            pred = items[:i + 1]
+            f1 = np.mean([multilabel_fscore(sc, pred) for sc in scenario])
+            scores.append((f1, pred))
+        f1, score = max(scores, key=lambda x: x[0])
+        res.append(score)
     return np.array(res)  # np.mean(res)
 
+from multiprocessing import Pool
 
-rrr = []
+
+def uuu(args):
+    order_id, vals = args
+
+    sum_pred = sum(pred_val for _, pred_val, _, _ in vals)
+    if sum_pred < 1:
+        vals += [('None', 1 - sum_pred, 0, 0)]
+        vals = sorted(vals, key=lambda x: x[1], reverse=True)
+    items = [product_id for product_id, _, _, _ in vals]
+    scenario = [get_y_true(vals) for _ in range(1000)]
+
+    scores = []
+    for i in range(len(vals)):
+        pred = items[:i + 1]
+        f1 = np.mean([multilabel_fscore(sc, pred) for sc in scenario])
+        scores.append((f1, pred))
+    f1, score = max(scores, key=lambda x: x[0])
+    ans = map_result.get(order_id, ['None'])
+    sc = multilabel_fscore(ans, score)
+    return sc
+
+
+def sss2(map_pred):
+    res = []
+    p = Pool()
+    aaaa = sorted(map_pred.items(), key=lambda x: x[0])
+    res = p.map(uuu, aaaa)
+    #res = list(map(uuu, tqdm(aaaa)))
+    p.close()
+    p.join()
+    return np.array(res)  # np.mean(res)
+
 idx = pd.read_csv('tmp_use.csv', header=None)[0].values
-for i in [10]:
-    safe = i / 10
-    max_score = -1
-    max_thresh = -1
-    for thresh in [194]:  # range(190, 200):
-        thresh /= 1000
-        sc = sss(map_pred, thresh, safe)
-        rrr.append(sc)
-        score = np.mean(sc[idx])
-        # print(thresh, score)
-        if max_score < score:
-            max_score = score
-            max_thresh = thresh
-    print(safe, max_thresh, max_score)
-
-#pd.DataFrame({174: rrr[0], 194: rrr[1]}).to_csv('tmp.csv', index=False)
+sc = sss2(map_pred)
+score = np.mean(sc[idx])
+print(score, np.mean(sc))
+# pd.DataFrame({174: rrr[0], 194: rrr[1]}).to_csv('tmp.csv', index=False)

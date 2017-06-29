@@ -43,9 +43,19 @@ df = df.reset_index(drop=True)
 idxes = df.groupby('order_id').apply(lambda x: x.index.values).values
 
 
+def exp_f1(label, pred):
+
+    tp = sum(pred[i] for i in range(len(pred)) if label[i])
+    fp = sum(pred[i] for i in range(len(pred)) if not label[i])
+    fn = sum(1 - pred[i] for i in range(len(pred)) if label[i])
+
+    f1 = 2 * tp / (2 * tp + fn + fp)
+    return f1
+
+
 def bbb(data):
     tmp = data.astype(int)
-    sc = f1_score(tmp[:, 0], tmp[:, 1])
+    sc = exp_f1(tmp[:, 0], tmp[:, 1])  # f1_score(tmp[:, 0], tmp[:, 1])
     return sc
 
 from multiprocessing import Pool
@@ -57,11 +67,10 @@ for thresh in range(170, 200):
     df['tn'] = (df['label'] == 1) & (df['pred_label'] == 0)
     # scores = df.groupby('order_id', sort=False).apply(lambda tmp: f1_score(tmp['label'], tmp['pred_label']))
     scores = []
-    """
     aaa = df.values
     p = Pool()
     scores = list(p.map(bbb, [aaa[idx, 5:] for idx in idxes]))
     p.close()
     p.join()
-    """
+
     print(thresh, f1_score(df.label.values, df.pred_label.values), df.tp.sum(), df.tn.sum(), np.mean(scores))

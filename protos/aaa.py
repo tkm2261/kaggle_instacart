@@ -1,6 +1,10 @@
 from sklearn.metrics import f1_score
 import numpy as np
 
+np.random.seed(71)
+
+ITEMS = {'A': 0.9, 'B': 0.3}
+
 
 def multilabel_fscore(y_true, y_pred):
     """
@@ -31,20 +35,43 @@ def multilabel_fscore(y_true, y_pred):
     return (2 * precision * recall) / (precision + recall)
 
 
-def multilabel_fscore2(y_true, y_pred):
-    y_true = np.array(y_true, dtype=np.bool_)
-    y_pred = np.array(y_pred, dtype=np.bool_)
-    tp = (y_true * y_pred).sum()
-    precision = tp / y_pred.sum()
-    recall = tp / y_true.sum()
-
-    if precision + recall == 0:
+def search(pred):
+    if len(pred) == 0:
         return 0
-    return (2 * precision * recall) / (precision + recall)
+
+    fp = np.sum(pred)
+    fn = 0.
+    tp = 0.
+
+    f1 = 2 * tp / (2 * tp + fn + fp)
+
+    for i, p in enumerate(pred):
+        fp -= p * p
+        fn += (1 - p)
+        tp += p
+        _f1 = 2 * tp / (2 * tp + fn + fp)
+        print(_f1)
+        if _f1 > f1:
+            f1 = _f1
+        else:
+            break
+
+    return i
 
 
-if __name__ == '__main__':
-    #   [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    a = [0, 0, 0, 1, 1, 1, 1, 0, 0]
-    b = [0, 1, 0, 1, 0, 0, 0, 1, 1]
-    print(multilabel_fscore([4, 5, 6, 7], [2, 4, 8, 9]), multilabel_fscore2(a, b), f1_score(a, b))
+def get_y_true():
+    y_true = []
+    for k in ITEMS.keys():
+        if ITEMS[k] > np.random.uniform():
+            y_true.append(k)
+    if len(y_true) == 0:
+        y_true = ['None']
+    return y_true
+
+
+print(np.mean([multilabel_fscore(get_y_true(), ['A']) for i in range(99999)]))
+print(np.mean([multilabel_fscore(get_y_true(), ['B']) for i in range(99999)]))
+print(np.mean([multilabel_fscore(get_y_true(), ['A', 'B']) for i in range(99999)]))
+print(np.mean([multilabel_fscore(get_y_true(), ['None']) for i in range(99999)]))
+print("======")
+print(search([0.9, 0.8]))

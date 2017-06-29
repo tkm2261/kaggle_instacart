@@ -37,7 +37,10 @@ for row in df.values:
     if order_id not in map_result:
         map_result[order_id] = []
 
-    if pred > thresh and len(map_result[order_id]) < mean + 0 * std:
+    if len(map_result[order_id]) >= mean + 0 * std:
+        continue
+
+    if pred > thresh:
         map_result[order_id].append([str(int(product_id)), pred])
 
 
@@ -55,8 +58,11 @@ f.write('order_id,products\n')
 for key in sorted(map_result.keys()):
     tmp = map_result[key]
     val = [t[0] for t in tmp]
-    score = np.sum([t[1] for t in tmp])
-    val += add_none(len(val), score)
+    sum_pred = np.sum([t[1] for t in tmp])
+    if sum_pred > 0:
+        sum_pred = 2 * sum_pred / (len(tmp) + sum_pred)
+
+    val += add_none(len(val), sum_pred)
 
     if len(val) == 0:
         val = 'None'
