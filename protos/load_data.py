@@ -46,9 +46,10 @@ def read_csv(filename):
     drop('u3_u3_order_hour_of_day')
     drop('u3_u4_department_id')
 
-    drop('u4_u2_order_dow')
-    drop('u4_u3_order_hour_of_day')
-    drop('u4_u4_department_id')
+    drop('^u4')    
+    #drop('u4_u2_order_dow')
+    #drop('u4_u3_order_hour_of_day')
+    #drop('u4_u4_department_id')
     gc.collect()
 
     normarize('i_i2_order_dow')
@@ -65,6 +66,9 @@ def read_csv(filename):
     drop('i3_i4_department_id')
 
     drop('^i4')
+    #drop('i4_i2_order_dow')
+    #drop('i4_i3_order_hour_of_day')
+    #drop('i4_i4_department_id')
 
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
@@ -109,6 +113,10 @@ def read_multi_csv(folder):
     """
     return df
 
+def rrr():
+    df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
+    return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(0).values
 
 def load_train_data():
     logger.info('enter')
@@ -116,8 +124,10 @@ def load_train_data():
     if os.path.exists(TRAIN_DATA_PATH):
         logger.info('using seriarized data')
         with open(TRAIN_DATA_PATH, 'rb') as f:
-            return pickle.load(f)
-
+            data, target, list_cv = pickle.load(f)
+            logger.info('using seriarized data2')
+            target = rrr()
+            return data, target, list_cv
     logger.info('load data')
 
     df = read_multi_csv(TRAIN_DATA_FOLDER)

@@ -19,7 +19,7 @@ from tqdm import tqdm
 from load_data import load_train_data, load_test_data
 
 now_order_ids = None
-THRESH = 0.194
+THRESH = 0.189
 
 
 def ttt():
@@ -37,16 +37,16 @@ def ttt():
 
     df_val = df.loc[val, :].copy()
     df_val['idx'] = np.arange(df_val.shape[0], dtype=int)
-    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id'])
+    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
     df = df[df['user_id'].isin(test)].copy()
-    df['target'] = 1
+    df['target'] = df["reordered"]
     df = pd.merge(df, df_val, how='outer', on=['order_id', 'user_id', 'product_id'])
     df['label'] = df['target'] == 1
     df['pred_label'] = np.zeros(df.shape[0])
     df_val['idx'] = df_val['idx'].fillna(100000000)
     return df.sort_values('idx').reset_index(drop=True)
 
-#val_data = ttt()
+val_data = ttt()
 
 
 def _f1_metric(label, pred):
@@ -96,6 +96,8 @@ if __name__ == '__main__':
     tmp.columns = ['weight']
     df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
     sample_weight = 1 / df['weight'].values
+    
+    sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
 
     ###
     x_train, y_train, cv = load_train_data()
@@ -153,7 +155,7 @@ if __name__ == '__main__':
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
                     sample_weight=trn_w,
-                    # eval_sample_weight=[val_w],
+                    eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=True,
                     eval_metric='auc',
