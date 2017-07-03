@@ -36,7 +36,8 @@ def multilabel_fscore(y_true, y_pred):
         return 0
     return (2 * precision * recall) / (precision + recall)
 
-'''
+
+
 def aaa(folder):
     t = time.time()
     print('start', time.time() - t)
@@ -65,18 +66,22 @@ def aaa(folder):
 
     df_val['pred'] = pred
 
-    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id'])
+    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
     # df = df[df['user_id'].isin(test)].copy()
 
     map_result = {}
-    for row in df[['order_id', 'user_id', 'product_id']].values:
-        order_id, user_id, product_id = row
+    for row in df[['order_id', 'user_id', 'product_id', 'reordered']].values:
+        order_id, user_id, product_id, label = row
         order_id = int(order_id)
         if order_id not in map_result:
             map_result[order_id] = []
-
+        if label == 0:
+            continue
+        
         map_result[order_id].append(int(product_id))
-
+    for order_id, val in map_result.items():
+        map_result[order_id] = val if len(val) != 0 else ["None"]
+        
     test = df.order_id.unique()
     return df_val, test, map_result
 
@@ -99,12 +104,12 @@ for i in range(n):
     std = tmp['std']
     if order_id not in map_pred:
         map_pred[order_id] = []
-    map_pred[order_id].append((product_id, pred, mean, std))
+    map_pred[order_id].append((product_id, pred, mean, std, user_id))
 
 
 with open('item_info.pkl', 'wb') as f:
     pickle.dump((map_pred, map_result), f, -1)
-'''
+
 with open('item_info.pkl', 'rb') as f:
     map_pred, map_result = pickle.load(f)
 
@@ -116,14 +121,22 @@ def add_none(num, sum_pred, safe):
     else:
         return ['None']
 
+with open('user_split.pkl', 'rb') as f:
+    cv = pickle.load(f)
 
+list_cv = []
+map_user_cv = {}
+for i, (train, test) in enumerate(cv):
+    for u in test:
+        map_user_cv[u] = i
+    
 def sss(map_pred, thresh, safe):
-    res = []
+    res = [[] for _ in range(len(cv))]
     for order_id in sorted(map_pred.keys()):
         vals = map_pred[order_id]
         pred = []
         sum_pred = 0.
-        for product_id, pred_val, mean, std in vals:
+        for product_id, pred_val, mean, std, user_id in vals:
             if len(pred) > mean:
                 break
 
@@ -134,10 +147,12 @@ def sss(map_pred, thresh, safe):
         if sum_pred > 0:
             sum_pred = 2 * sum_pred / (len(pred) + sum_pred)
         pred += add_none(len(pred), sum_pred, safe)
+        #if sum_pred == 0:
+        #    pred.append('None')
         ans = map_result.get(order_id, ['None'])
 
-        res.append(multilabel_fscore(ans, pred))
-    return np.array(res)  # np.mean(res)
+        res[map_user_cv[user_id]].append(multilabel_fscore(ans, pred))
+    return np.array([np.mean(a) for a in res])  # np.mean(res)
 
 
 rrr = []
@@ -146,15 +161,15 @@ for i in [10]:
     safe = i / 10
     max_score = -1
     max_thresh = -1
-    for thresh in [194]:  # range(190, 200):
+    for thresh in range(150, 200):
         thresh /= 1000
         sc = sss(map_pred, thresh, safe)
         rrr.append(sc)
-        score = np.mean(sc[idx])
-        # print(thresh, score)
+        score = np.mean(sc)
+        print(thresh, score, sc)
         if max_score < score:
             max_score = score
             max_thresh = thresh
-    print(safe, max_thresh, max_score)
+    print(safe, max_thresh, max_score, np.mean(sc))
 
 #pd.DataFrame({174: rrr[0], 194: rrr[1]}).to_csv('tmp.csv', index=False)
