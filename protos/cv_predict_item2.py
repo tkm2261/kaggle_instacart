@@ -109,8 +109,10 @@ from numba import jit
 def get_y_true(preds, none_idx):
     n = preds.shape[0]
     y_true = np.zeros(n, dtype=np.bool)
-    for i in range(n):
-        y_true[i] = preds[i] > np.random.uniform()
+    #thresh = np.random.uniform(n)
+    y_true = preds > np.random.random(n)
+    #for i in range(n):
+    #    y_true[i] = preds[i] > np.random.uniform()
     if y_true.sum() == 0:
         y_true[none_idx] = True
     else:
@@ -127,8 +129,8 @@ from multiprocessing import Pool
 def uuu(args):
     order_id, vals = args
 
-    preds = np.array([pred_val for _, pred_val, _, _,_ in vals])
-    items = [int(product_id) for product_id, _, _, _,_ in vals]
+    preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
+    items = [int(product_id) for product_id, _, _, _, _ in vals]
     #none_prob = max(1 - preds.sum(), 0) #
     none_prob = (1 - preds).prod() 
     preds = np.r_[preds, [none_prob]]
