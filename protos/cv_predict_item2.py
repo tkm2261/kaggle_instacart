@@ -127,9 +127,9 @@ from multiprocessing import Pool
 def uuu(args):
     order_id, vals = args
 
-    preds = np.array([pred_val for _, pred_val, _, _ in vals])
-    items = [int(product_id) for product_id, _, _, _ in vals]
-    none_prob = max(1 - preds.sum(), 0) #
+    preds = np.array([pred_val for _, pred_val, _, _,_ in vals])
+    items = [int(product_id) for product_id, _, _, _,_ in vals]
+    #none_prob = max(1 - preds.sum(), 0) #
     none_prob = (1 - preds).prod() 
     preds = np.r_[preds, [none_prob]]
     items.append('None')
@@ -144,13 +144,13 @@ def uuu(args):
 
     num_y_true = scenario.sum(axis=1)    
     scores = []
-    pred = np.zeros(preds.shape[0], dtype=np.bool)
-    for i in range(len(pred)):
+    for i in range(len(preds)):
         num_y_pred = i + 1
         tp = scenario[:, :i + 1].sum(axis=1)
         precision = tp / num_y_pred
         recall = tp / num_y_true
         f1 = (2 * precision * recall) / (precision + recall)
+        f1[np.isnan(f1)] = 0
         f1 = f1.mean()
         scores.append((f1, i))
     f1, idx = max(scores, key=lambda x: x[0])
@@ -158,7 +158,7 @@ def uuu(args):
 
     ans = map_result.get(order_id, ['None'])
     sc = multilabel_fscore(ans, score)
-
+    #print(ans, score, f1, sc)
     return sc
 
 
@@ -166,7 +166,7 @@ def sss2(map_pred):
     res = []
     p = Pool()
     aaaa = sorted(map_pred.items(), key=lambda x: x[0])
-    res = p.map(uuu, aaaa)
+    res = p.map(uuu, tqdm(aaaa))
     #res = list(map(uuu, tqdm(aaaa)))
     p.close()
     p.join()
