@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
     logger.info('load end')
     all_params = {'max_depth': [5],
-                  'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
+                  'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
                   'n_estimators': [10000],
                   'min_child_weight': [10],
                   'colsample_bytree': [0.7],
@@ -154,8 +154,8 @@ if __name__ == '__main__':
 
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
-                    sample_weight=trn_w,
-                    eval_sample_weight=[val_w],
+                    #sample_weight=trn_w,
+                    #eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=True,
                     eval_metric='auc',
@@ -199,8 +199,8 @@ if __name__ == '__main__':
     gc.collect()
 
     clf = LGBMClassifier(**min_params)
-    clf.fit(x_train, y_train,
-            sample_weight=sample_weight
+    clf.fit(x_train, y_train
+            #,sample_weight=sample_weight
             )
     with open('model.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)

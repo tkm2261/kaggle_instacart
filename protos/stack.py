@@ -60,7 +60,7 @@ if __name__ == '__main__':
     logger.setLevel('INFO')
     logger.addHandler(handler)
 
-    handler = FileHandler('stack.py.log', 'w')
+    handler = FileHandler('stack.py.log', 'a')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
@@ -71,13 +71,17 @@ if __name__ == '__main__':
     with open('train_cv_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)
 
+    df1 = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
+    target = pd.merge(df, df1, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(0).values
+    df.target = target
+        
+        
     df['pred'] = pred
-    df_order = df.groupby('order_id')['pred'].agg(
-        {'o_avg': np.mean, 'o_min': np.min, 'o_max': np.max, 'o_cnt': len}).reset_index()
+    df_order = df.groupby('order_id')['pred'].agg({'o_avg': np.mean, 'o_min': np.min, 'o_max': np.max, 'o_cnt': len}).reset_index()
     df = pd.merge(df, df_order, how='left', on='order_id')
     df['rank'] = df.groupby('order_id')['pred'].rank(ascending=False)
 
-    print(df.sort_values('order_id')[['order_id', 'rank', 'pred']].head(100))
+    #print(df.sort_values('order_id')[['order_id', 'rank', 'pred']].head(100))
 
     with open('user_split.pkl', 'rb') as f:
         cv = pickle.load(f)
@@ -86,7 +90,7 @@ if __name__ == '__main__':
     val_data = df
     x_train = df.drop(id_cols, axis=1)
     train_cols = x_train.columns.values
-    """
+
     x_train = x_train.values
     y_train = df.target.values
     sample_weight = 1 / df['o_cnt'].values
@@ -102,7 +106,7 @@ if __name__ == '__main__':
     logger.info('load end')
     all_params = {'max_depth': [3],
                   'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
-                  'n_estimators': [10000],
+                  'n_estimators': [130],#[10000],
                   'min_child_weight': [30],
                   'colsample_bytree': [0.9],
                   #'boosting_type': ['dart'],  # ['gbdt'],
@@ -122,7 +126,7 @@ if __name__ == '__main__':
     min_params = None
     #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
-
+    """
     for params in tqdm(list(ParameterGrid(all_params))):
 
         cnt = 0
@@ -186,16 +190,18 @@ if __name__ == '__main__':
         logger.info('best_param: {}'.format(min_params))
 
     gc.collect()
-
+    """
+    for params in tqdm(list(ParameterGrid(all_params))):
+        min_params = params
     clf = LGBMClassifier(**min_params)
     clf.fit(x_train, y_train,
-            sample_weight=sample_weight
+            #sample_weight=sample_weight
             )
     with open('model2.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
-    """
+
     ###
     with open('model2.pkl', 'rb') as f:
         clf = pickle.load(f)

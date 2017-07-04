@@ -75,6 +75,13 @@ def get_y_true(vals):
 
     return y_true
 
+def add_none(num, sum_pred):
+    score = 2. / (2 + num)
+    if sum_pred  > score:
+        return False
+    else:
+        return True
+
 from multiprocessing import Pool
 
 
@@ -85,16 +92,24 @@ def uuu(args):
     if sum_pred < 1:
         vals += [('None', 1 - sum_pred)]
         vals = sorted(vals, key=lambda x: x[1], reverse=True)
+
     items = [product_id for product_id, _ in vals]
-    scenario = [get_y_true(vals) for _ in range(1000)]
+    scenario = [get_y_true(vals) for _ in range(10000)]
 
     scores = []
     for i in range(len(vals)):
         pred = items[:i + 1]
         f1 = np.mean([multilabel_fscore(sc, pred) for sc in scenario])
         scores.append((f1, pred))
-
+    #pred = ['None']
+    #f1 = np.mean([multilabel_fscore(sc, pred) for sc in scenario])
+    #scores.append((f1, pred))
     f1, items = max(scores, key=lambda x: x[0])
+    """
+    if add_none(len(items), f1):
+        if items[0] != 'None':
+            items.append('None')
+    """
     return order_id, items
 
 #p = Pool()

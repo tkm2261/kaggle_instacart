@@ -73,10 +73,11 @@ def aaa(folder):
     for row in df[['order_id', 'user_id', 'product_id', 'reordered']].values:
         order_id, user_id, product_id, label = row
         order_id = int(order_id)
-        if order_id not in map_result:
-            map_result[order_id] = []
         if label == 0:
             continue
+ 
+        if order_id not in map_result:
+            map_result[order_id] = []
         
         map_result[order_id].append(int(product_id))
     for order_id, val in map_result.items():

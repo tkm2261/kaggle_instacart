@@ -25,7 +25,7 @@ def aaa(folder):
     print('start', time.time() - t)
     # with open(folder + 'train_cv_pred.pkl', 'rb') as f:
     #    pred = pickle.load(f)
-    with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+    with open(folder + 'train_cv_tmp_2.pkl', 'rb') as f:
         pred = pickle.load(f)
 
     print('start1', time.time() - t)
@@ -97,9 +97,9 @@ with open('item_info.pkl', 'rb') as f:
 def add_none(num, sum_pred, safe):
     score = 2. / (2 + num)
     if sum_pred * safe > score:
-        return []
+        return False
     else:
-        return ['None']
+        return True
 
 
 np.random.seed(0)
@@ -129,8 +129,10 @@ from multiprocessing import Pool
 def uuu(args):
     order_id, vals = args
 
-    preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
-    items = [int(product_id) for product_id, _, _, _, _ in vals]
+    preds = np.array([pred_val for _, pred_val, _, _ in vals])
+    items = [int(product_id) for product_id, _, _, _ in vals]
+
+
     #none_prob = max(1 - preds.sum(), 0) #
     none_prob = (1 - preds).prod() 
     preds = np.r_[preds, [none_prob]]
@@ -157,7 +159,11 @@ def uuu(args):
         scores.append((f1, i))
     f1, idx = max(scores, key=lambda x: x[0])
     score = items[:idx+1]
-
+    """
+    if add_none(idx +1, f1, 1):
+        if 'None' not in score:
+            score += ['None']
+    """
     ans = map_result.get(order_id, ['None'])
     sc = multilabel_fscore(ans, score)
     #print(ans, score, f1, sc)
