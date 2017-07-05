@@ -21,15 +21,17 @@ def read_csv(data,  delimiter=","):
 
     data["order_id"] = data["order_id"].apply(lambda x: map_user2idx[x])
     data["product_id"] = data["product_id"].apply(lambda x: map_item2idx[x])
-
+    print('A')
     A = spMat.coo_matrix(
-        (data["score"], (data["product_id"], data["order_id"])),
-        shape=(len(item_ids), len(order_ids)),
+        (data["score"], (data["order_id"], data["product_id"])),
+        shape=(len(order_ids), len(item_ids)),
         dtype=numpy.double
-    )
+    ).tocsr()
     N = A.shape[1]
     C = ((A.T * A - (sum(A).T * sum(A) / N)) / (N - 1)).todense()
+    print('B')
     V = numpy.sqrt(numpy.mat(numpy.diag(C)).T * numpy.mat(numpy.diag(C)))
+    print('C')
     COV = numpy.divide(C, V + 1e-119)
 
     return RecommenderData(data,
