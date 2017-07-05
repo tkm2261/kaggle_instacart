@@ -4,6 +4,7 @@ class RecommenderData(object):
 
     def __init__(self,
                  preference_matrix=None,
+                 cov_matrix=None,
                  map_idx2user=None,
                  map_idx2item=None,
                  map_user2idx=None,
@@ -15,6 +16,7 @@ class RecommenderData(object):
         else:
             self.preference_matrix = spMat.csr_matrix(preference_matrix)
 
+        self.cov_matrix = cov_matrix
         self.map_idx2user = map_idx2user
         self.map_idx2item = map_idx2item
         self.map_user2idx = map_user2idx
