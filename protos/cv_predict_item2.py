@@ -3,10 +3,16 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import f1_score
 import time
-
 import warnings
 warnings.filterwarnings('ignore')
 import sys
+from tqdm import tqdm
+from multiprocessing import Pool
+
+import logging
+log_fmt = '%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s'
+
+logging.basicConfig(format=log_fmt, level=logging.DEBUG)
 
 
 def multilabel_fscore(y_true, y_pred):
@@ -20,35 +26,24 @@ def multilabel_fscore(y_true, y_pred):
     return (2 * precision * recall) / (precision + recall)
 
 
-'''
 def aaa(folder):
-    t = time.time()
-    print('start', time.time() - t)
+    logging.info('enter' + folder)
     # with open(folder + 'train_cv_pred.pkl', 'rb') as f:
     #    pred = pickle.load(f)
     with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)
 
-    print('start1', time.time() - t)
     df = pd.read_csv(folder + 'train_data_idx.csv')
     df.drop('target', axis=1, inplace=True)
-    print('start2', time.time() - t)
-    """
-    with open(folder + 'user_split.pkl', 'rb') as f:
-        cv = pickle.load(f)
-
-    list_cv = []
-    user_ids = df['user_id']
-
-    for train, test in cv[:1]:
-        trn = user_ids.isin(train)
-        val = user_ids.isin(test)
-        list_cv.append((trn, val))
-    """
     df_val = df  # .loc[val, :].copy()
 
     df_val['pred'] = pred
+    logging.info('exit')
+    return df_val
 
+
+def make_result():
+    logging.info('enter')
     df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
     # df = df[df['user_id'].isin(test)].copy()
 
@@ -62,21 +57,27 @@ def aaa(folder):
             map_result[order_id] = []
 
         map_result[order_id].append(int(product_id))
+    logging.info('exit')
+    return map_result
 
-    test = df.order_id.unique()
-    return df_val, test, map_result
 
-
+logging.info('user mean')
 map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
+map_result = make_result()
 
+df_val = aaa('./0703/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val.pred += df_val1.pred.values
+df_val1 = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val.pred += df_val1.pred.values
+df_val.pred /= 3
 
-df_val, test, map_result = aaa('./')
 df_val = df_val.sort_values(['order_id', 'pred'], ascending=False)
 df_val = df_val[['order_id', 'user_id', 'product_id', 'pred']].values
 
 map_pred = {}
 n = df_val.shape[0]
-for i in range(n):
+for i in tqdm(range(n)):
     order_id, user_id, product_id, pred = df_val[i]
     order_id, user_id, product_id = list(map(int, [order_id, user_id, product_id]))
 
@@ -90,7 +91,8 @@ for i in range(n):
 
 with open('item_info.pkl', 'wb') as f:
     pickle.dump((map_pred, map_result), f, -1)
-'''
+
+
 with open('item_info.pkl', 'rb') as f:
     map_pred, map_result = pickle.load(f)
 
@@ -109,7 +111,7 @@ np.random.seed(0)
 def get_y_true(preds, none_idx):
     n = preds.shape[0]
     y_true = np.zeros(n, dtype=np.bool)
-    #thresh = np.random.uniform(n)
+    # thresh = np.random.uniform(n)
     y_true = preds > np.random.random(n)
     # for i in range(n):
     #    y_true[i] = preds[i] > np.random.uniform()
@@ -118,12 +120,6 @@ def get_y_true(preds, none_idx):
     else:
         y_true[none_idx] = False
     return y_true
-
-
-from tqdm import tqdm
-
-
-from multiprocessing import Pool
 
 
 def uuu(args):
@@ -150,7 +146,7 @@ def uuu(args):
     tp = np.zeros(scenario.shape[0])
     for i in range(len(preds)):
         num_y_pred = i + 1
-        #tp = scenario[:, :i + 1].sum(axis=1)
+        # tp = scenario[:, :i + 1].sum(axis=1)
         tp += scenario[:, i]
         precision = tp / num_y_pred
         recall = tp / num_y_true
@@ -167,7 +163,7 @@ def uuu(args):
     """
     ans = map_result.get(order_id, ['None'])
     sc = multilabel_fscore(ans, score)
-    #print(ans, score, f1, sc)
+    # print(ans, score, f1, sc)
     return sc
 
 
@@ -176,14 +172,16 @@ def sss2(map_pred):
     p = Pool()
     aaaa = sorted(map_pred.items(), key=lambda x: x[0])
     res = p.map(uuu, tqdm(aaaa))
-    #res = list(map(uuu, tqdm(aaaa)))
+    # res = list(map(uuu, tqdm(aaaa)))
     p.close()
     p.join()
     return np.array(res)  # np.mean(res)
 
 
-#idx = pd.read_csv('tmp_use.csv', header=None)[0].values
+logging.info('start')
+# idx = pd.read_csv('tmp_use.csv', header=None)[0].values
 sc = sss2(map_pred)
 score = np.mean(sc)
 print(score, np.mean(sc))
 # pd.DataFrame({174: rrr[0], 194: rrr[1]}).to_csv('tmp.csv', index=False)
+logging.info('end')
