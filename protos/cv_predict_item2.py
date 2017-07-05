@@ -19,13 +19,14 @@ def multilabel_fscore(y_true, y_pred):
         return 0
     return (2 * precision * recall) / (precision + recall)
 
+
 '''
 def aaa(folder):
     t = time.time()
     print('start', time.time() - t)
     # with open(folder + 'train_cv_pred.pkl', 'rb') as f:
     #    pred = pickle.load(f)
-    with open(folder + 'train_cv_tmp_2.pkl', 'rb') as f:
+    with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)
 
     print('start1', time.time() - t)
@@ -103,15 +104,14 @@ def add_none(num, sum_pred, safe):
 
 
 np.random.seed(0)
-from numba import jit
 
-@jit('b1[:](f8[:], i8)')
+
 def get_y_true(preds, none_idx):
     n = preds.shape[0]
     y_true = np.zeros(n, dtype=np.bool)
     #thresh = np.random.uniform(n)
     y_true = preds > np.random.random(n)
-    #for i in range(n):
+    # for i in range(n):
     #    y_true[i] = preds[i] > np.random.uniform()
     if y_true.sum() == 0:
         y_true[none_idx] = True
@@ -132,25 +132,26 @@ def uuu(args):
     preds = np.array([pred_val for _, pred_val, _, _ in vals])
     items = [int(product_id) for product_id, _, _, _ in vals]
 
-
     #none_prob = max(1 - preds.sum(), 0) #
-    none_prob = (1 - preds).prod() 
+    none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
     items.append('None')
 
     idx = np.argsort(preds)[::-1]
     preds = preds[idx]
 
-    items = [items[i] for i in idx]#items[idx]
+    items = [items[i] for i in idx]  # items[idx]
     none_idx = idx[-1]
     sum_pred = preds.sum()
     scenario = np.array([get_y_true(preds, none_idx) for _ in range(1000)])
 
-    num_y_true = scenario.sum(axis=1)    
+    num_y_true = scenario.sum(axis=1)
     scores = []
+    tp = np.zeros(scenario.shape[0])
     for i in range(len(preds)):
         num_y_pred = i + 1
-        tp = scenario[:, :i + 1].sum(axis=1)
+        #tp = scenario[:, :i + 1].sum(axis=1)
+        tp += scenario[:, i]
         precision = tp / num_y_pred
         recall = tp / num_y_true
         f1 = (2 * precision * recall) / (precision + recall)
@@ -158,7 +159,7 @@ def uuu(args):
         f1 = f1.mean()
         scores.append((f1, i))
     f1, idx = max(scores, key=lambda x: x[0])
-    score = items[:idx+1]
+    score = items[:idx + 1]
     """
     if add_none(idx +1, f1, 1):
         if 'None' not in score:
@@ -179,6 +180,7 @@ def sss2(map_pred):
     p.close()
     p.join()
     return np.array(res)  # np.mean(res)
+
 
 #idx = pd.read_csv('tmp_use.csv', header=None)[0].values
 sc = sss2(map_pred)
