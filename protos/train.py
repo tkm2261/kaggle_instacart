@@ -21,54 +21,14 @@ from load_data import load_train_data, load_test_data
 now_order_ids = None
 THRESH = 0.189
 
-
-def ttt():
-    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
-    with open('user_split.pkl', 'rb') as f:
-        cv = pickle.load(f)
-
-    list_cv = []
-    user_ids = df['user_id']
-
-    for train, test in cv[: 1]:
-        trn = user_ids.isin(train)
-        val = user_ids.isin(test)
-        list_cv.append((trn, val))
-
-    df_val = df.loc[val, :].copy()
-    df_val['idx'] = np.arange(df_val.shape[0], dtype=int)
-    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
-    df = df[df['user_id'].isin(test)].copy()
-    df['target'] = df["reordered"]
-    df = pd.merge(df, df_val, how='outer', on=['order_id', 'user_id', 'product_id'])
-    df['label'] = df['target'] == 1
-    df['pred_label'] = np.zeros(df.shape[0])
-    df_val['idx'] = df_val['idx'].fillna(100000000)
-    return df.sort_values('idx').reset_index(drop=True)
-
-val_data = ttt()
-
-
-def _f1_metric(label, pred):
-    pred = pred > THRESH
-    val_data.loc[np.arange(pred.shape[0], dtype=int), 'pred_label'] = pred
-
-    sc = f1_score(val_data.label.values.astype(np.bool), val_data.pred_label.values.astype(np.bool))
-    return 'f1', sc, True
+list_idx = None
 
 
 def f1_metric(label, pred):
-    return 'auc', roc_auc_score(label, pred), True
-    """
-    df = pd.DataFrame({'order_id': now_order_ids, 'label': label, 'pred': pred > THRESH})
-    scores = []
-    for order_id in df.order_id.unique():
-        tmp = df[df['order_id'] == order_id]
-        sc = f1_score(tmp['label'].values, tmp['pred'].values)
-        scores.append(sc)
-    scores = df.groupby('order_id').apply(lambda tmp: f1_score(tmp['label'], tmp['pred']))
-    return 'f1', np.mean(scores), True
-    """
+    pred = pred > THRESH
+    sc = np.mean([f1_score(pred[i], label[i]) for i in list_idx])
+    return 'f1', sc, True
+
 
 if __name__ == '__main__':
 
@@ -89,18 +49,18 @@ if __name__ == '__main__':
 
     logger.info('load start')
     df = pd.read_csv('train_data_idx.csv')
+    """
     weight_col = 'order_id'
-
     order_idx = df.order_id.values
     tmp = df.groupby(weight_col)[[weight_col]].count()
     tmp.columns = ['weight']
     df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
     sample_weight = 1 / df['weight'].values
-    
     sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
-
+    """
     ###
     x_train, y_train, cv = load_train_data()
+    df.target = y_train
 
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
@@ -112,7 +72,7 @@ if __name__ == '__main__':
 
     logger.info('load end')
     all_params = {'max_depth': [5],
-                  'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
+                  'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
                   'n_estimators': [10000],
                   'min_child_weight': [10],
                   'colsample_bytree': [0.7],
@@ -139,26 +99,25 @@ if __name__ == '__main__':
         cnt = 0
         list_score = []
         list_score2 = []
+        list_score3 = []
         list_best_iter = []
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
+            list_idx = df.iloc[test, :].reset_index(drop=True).groupby(
+                'order_id').apply(lambda x: x.index.values).values
+
             trn_x = x_train[train]
             val_x = x_train[test]
             trn_y = y_train[train]
             val_y = y_train[test]
 
-            trn_w = sample_weight[train]
-            val_w = sample_weight[test]
-
-            now_order_ids = order_idx[test]
-
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
-                    #sample_weight=trn_w,
-                    #eval_sample_weight=[val_w],
+                    # sample_weight=trn_w,
+                    # eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=True,
-                    eval_metric='auc',
+                    eval_metric=f1_metric,
                     early_stopping_rounds=30
                     )
             pred = clf.predict_proba(val_x)[:, 1]
@@ -166,9 +125,11 @@ if __name__ == '__main__':
 
             _score = log_loss(val_y, pred)
             _score2 = - roc_auc_score(val_y, pred)
+            _score3 = - f1_score(val_y, pred > THRESH)
             # logger.debug('   _score: %s' % _score)
             list_score.append(_score)
             list_score2.append(_score2)
+            list_score3.append(_score3)
             if clf.best_iteration != -1:
                 list_best_iter.append(clf.best_iteration)
             else:
@@ -184,16 +145,20 @@ if __name__ == '__main__':
         params['n_estimators'] = np.mean(list_best_iter, dtype=int)
         score = (np.mean(list_score), np.min(list_score), np.max(list_score))
         score2 = (np.mean(list_score2), np.min(list_score2), np.max(list_score2))
+        score3 = (np.mean(list_score3), np.min(list_score3), np.max(list_score3))
 
         logger.info('param: %s' % (params))
         logger.info('loss: {} (avg min max {})'.format(score[use_score], score))
         logger.info('score: {} (avg min max {})'.format(score2[use_score], score2))
+        logger.info('score3: {} (avg min max {})'.format(score3[use_score], score2))
         if min_score[use_score] > score[use_score]:
             min_score = score
             min_score2 = score2
+            min_score3 = score3
             min_params = params
         logger.info('best score: {} {}'.format(min_score[use_score], min_score))
         logger.info('best score2: {} {}'.format(min_score2[use_score], min_score2))
+        logger.info('best score3: {} {}'.format(min_score3[use_score], min_score3))
         logger.info('best_param: {}'.format(min_params))
 
     gc.collect()

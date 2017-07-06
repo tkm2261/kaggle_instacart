@@ -26,6 +26,7 @@ def multilabel_fscore(y_true, y_pred):
     return (2 * precision * recall) / (precision + recall)
 
 
+'''
 def aaa(folder):
     logging.info('enter' + folder)
     # with open(folder + 'train_cv_pred.pkl', 'rb') as f:
@@ -69,8 +70,9 @@ map_result = make_result()
 #df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val.pred += df_val1.pred.values
 df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val.pred += df_val1.pred.values
-#df_val.pred /= 3
+#df_val.pred /= 2
 
 df_val = df_val.sort_values(['order_id', 'pred'], ascending=False)
 df_val = df_val[['order_id', 'user_id', 'product_id', 'pred']].values
@@ -91,7 +93,7 @@ for i in tqdm(range(n)):
 
 with open('item_info.pkl', 'wb') as f:
     pickle.dump((map_pred, map_result), f, -1)
-
+'''
 
 with open('item_info.pkl', 'rb') as f:
     map_pred, map_result = pickle.load(f)
@@ -106,36 +108,45 @@ def add_none(num, sum_pred, safe):
 
 
 np.random.seed(0)
+NUM = 1000
 
 
 def get_y_true(preds, none_idx):
     n = preds.shape[0]
     y_true = np.zeros(n, dtype=np.bool)
-    # thresh = np.random.uniform(n)
-    y_true = preds > np.random.random(n)
-    # for i in range(n):
-    #    y_true[i] = preds[i] > np.random.uniform()
-    if y_true.sum() == 0:
-        y_true[none_idx] = True
-    else:
-        y_true[none_idx] = False
-    return y_true
+    y_true = np.random.random((NUM, n)) < preds
 
-def get_y_true2(preds, none_idx, cov_matrix):
-
-    tmp = np.random.multivariate_normal(preds, cov_matrix, size=1000)
-    y_true = tmp > preds
     y_true_sum = y_true.sum(axis=1)
     y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
-    if y_true.sum() == 0:
-        y_true[none_idx] = True
-    else:
-        y_true[none_idx] = False
+
     return y_true
 
+
+from scipy.stats import norm
+
+
 def get_cov(user_id):
-    with open('../recommend/cov_data/%s.pkl', 'rb') as f:
+    with open('../recommend/cov_data/%s.pkl' % user_id, 'rb') as f:
         return pickle.load(f)
+
+
+ALPHA = float(sys.argv[1])
+logging.info('ALPHA: %s' % ALPHA)
+
+
+def get_y_true2(preds, none_idx, cov_matrix):
+    n = preds.shape[0]
+
+    cov_matrix = ALPHA * cov_matrix + (1 - ALPHA) * np.eye(n)
+
+    tmp = np.random.multivariate_normal(np.zeros(n), cov_matrix, size=NUM)
+    preds = np.array([norm.ppf(q=p, loc=0, scale=np.sqrt(cov_matrix[i, i])) for i, p in enumerate(preds)])
+
+    y_true = preds > tmp
+    y_true_sum = y_true.sum(axis=1)
+    y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
+    return y_true
+
 
 def uuu(args):
     order_id, vals = args
@@ -144,7 +155,18 @@ def uuu(args):
     items = [int(product_id) for product_id, _, _, _, _ in vals]
 
     user_id = vals[0][4]
-    cov_matrix = get_cov(user_id)
+
+    cov_data = get_cov(user_id)
+    idx = [cov_data.map_item2idx[i] for i in items]
+    try:
+        tmp = cov_data.cov_matrix[idx, idx]
+    except:
+        tmp = np.array([[1]])
+    n = preds.shape[0]
+    cov_matrix = np.zeros((n + 1, n + 1))
+    cov_matrix[:n, :n] += tmp
+    cov_matrix[n - 1, n - 1] = 1
+
     #none_prob = max(1 - preds.sum(), 0) #
     none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
@@ -155,8 +177,8 @@ def uuu(args):
 
     items = [items[i] for i in idx]  # items[idx]
     none_idx = idx[-1]
-    sum_pred = preds.sum()
-    #scenario = np.array([get_y_true(preds, none_idx) for _ in range(1000)])
+    #sum_pred = preds.sum()
+    # scenario = get_y_true(preds, none_idx)  # np.array([get_y_true(preds, none_idx) for _ in range(1000)])
     scenario = get_y_true2(preds, none_idx, cov_matrix)
     num_y_true = scenario.sum(axis=1)
     scores = []
@@ -189,7 +211,7 @@ def sss2(map_pred):
     p = Pool()
     aaaa = sorted(map_pred.items(), key=lambda x: x[0])
     res = p.map(uuu, tqdm(aaaa))
-    # res = list(map(uuu, tqdm(aaaa)))
+    #res = list(map(uuu, tqdm(aaaa)))
     p.close()
     p.join()
     return np.array(res)  # np.mean(res)

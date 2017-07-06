@@ -25,6 +25,22 @@ val_data = None
 cv_idx = None
 
 
+def aaa(folder):
+    logger.info('enter' + folder)
+    # with open(folder + 'train_cv_pred.pkl', 'rb') as f:
+    #    pred = pickle.load(f)
+    with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+        pred = pickle.load(f)
+
+    df = pd.read_csv(folder + 'train_data_idx.csv')
+    df.drop('target', axis=1, inplace=True)
+    df_val = df  # .loc[val, :].copy()
+
+    df_val['pred'] = pred
+    logger.info('exit')
+    return df_val
+
+
 def f1_metric(label, pred):
     pred = pred > THRESH
 
@@ -49,6 +65,7 @@ def _f1_metric(label, pred):
     return 'f1', np.mean(scores), True
     """
 
+
 if __name__ == '__main__':
 
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
@@ -67,17 +84,18 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     logger.info('load start')
-    df = pd.read_csv('train_data_idx.csv')
-    with open('train_cv_tmp.pkl', 'rb') as f:
-        pred = pickle.load(f)
+    df = aaa('./0703/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+    df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+    df['pred2'] = df_val1.pred.values
+    df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+    df['pred3'] = df_val1.pred.values
 
     df1 = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
     target = pd.merge(df, df1, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(0).values
-    df.target = target
-        
-        
-    df['pred'] = pred
-    df_order = df.groupby('order_id')['pred'].agg({'o_avg': np.mean, 'o_min': np.min, 'o_max': np.max, 'o_cnt': len}).reset_index()
+    df['target'] = target
+
+    df_order = df.groupby('order_id')['pred'].agg(
+        {'o_avg': np.mean, 'o_min': np.min, 'o_max': np.max, 'o_cnt': 'count'}).reset_index()
     df = pd.merge(df, df_order, how='left', on='order_id')
     df['rank'] = df.groupby('order_id')['pred'].rank(ascending=False)
 
@@ -85,7 +103,7 @@ if __name__ == '__main__':
 
     with open('user_split.pkl', 'rb') as f:
         cv = pickle.load(f)
-
+    print(df.columns.values)
     id_cols = [col for col in df.columns.values if re.search('_id$', col) is not None] + ['target']
     val_data = df
     x_train = df.drop(id_cols, axis=1)
@@ -106,7 +124,7 @@ if __name__ == '__main__':
     logger.info('load end')
     all_params = {'max_depth': [3],
                   'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
-                  'n_estimators': [130],#[10000],
+                  'n_estimators': [130],  # [10000],
                   'min_child_weight': [30],
                   'colsample_bytree': [0.9],
                   #'boosting_type': ['dart'],  # ['gbdt'],
@@ -126,7 +144,7 @@ if __name__ == '__main__':
     min_params = None
     #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
-    """
+
     for params in tqdm(list(ParameterGrid(all_params))):
 
         cnt = 0
@@ -144,7 +162,7 @@ if __name__ == '__main__':
 
             trn_w = sample_weight[train]
             val_w = sample_weight[test]
-
+            """
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
                     # sample_weight=trn_w,
@@ -154,6 +172,9 @@ if __name__ == '__main__':
                     eval_metric=f1_metric,
                     early_stopping_rounds=30
                     )
+            """
+            clf = LogisticRegression(random_state=0, fit_intercept=False)
+            clf.fit(trn_x, trn_y)
             pred = clf.predict_proba(val_x)[:, 1]
             all_pred[test] = pred
 
@@ -162,7 +183,8 @@ if __name__ == '__main__':
             # logger.debug('   _score: %s' % _score)
             list_score.append(_score)
             list_score2.append(_score2)
-            if clf.best_iteration != -1:
+
+            if 0:  # clf.best_iteration != -1:
                 list_best_iter.append(clf.best_iteration)
             else:
                 list_best_iter.append(params['n_estimators'])
@@ -190,12 +212,12 @@ if __name__ == '__main__':
         logger.info('best_param: {}'.format(min_params))
 
     gc.collect()
-    """
-    for params in tqdm(list(ParameterGrid(all_params))):
-        min_params = params
-    clf = LGBMClassifier(**min_params)
+
+    clf = LogisticRegression(fit_intercept=False, random_state=0)
+
+    #clf = LGBMClassifier(**min_params)
     clf.fit(x_train, y_train,
-            #sample_weight=sample_weight
+            # sample_weight=sample_weight
             )
     with open('model2.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)
@@ -205,13 +227,14 @@ if __name__ == '__main__':
     ###
     with open('model2.pkl', 'rb') as f:
         clf = pickle.load(f)
+    """
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
     n_features = imp.shape[0]
     imp_use = imp[imp['imp'] > 0].sort_values('imp', ascending=False)
     logger.info('imp use {} {}'.format(imp_use.shape, n_features))
     with open('features_train2.py', 'w') as f:
         f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
-
+    """
     df = pd.read_csv('test_data_idx.csv')
     with open('test_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)[:, 1]
@@ -223,8 +246,8 @@ if __name__ == '__main__':
     df['rank'] = df.groupby('order_id')['pred'].rank(ascending=False)
 
     x_test = df[train_cols].values
-    if x_test.shape[1] != n_features:
-        raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
+    # if x_test.shape[1] != n_features:
+    #    raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
     p_test = clf.predict_proba(x_test)
     with open('test_tmp2.pkl', 'wb') as f:

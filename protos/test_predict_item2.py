@@ -2,85 +2,92 @@ import pickle
 import pandas as pd
 import numpy as np
 from sklearn.metrics import f1_score
+import warnings
+warnings.filterwarnings('ignore')
+
 import time
+from tqdm import tqdm
+import logging
+log_fmt = '%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s'
 
-
-def multilabel_fscore(y_true, y_pred):
-    """
-    ex1:
-    y_true = [1, 2, 3]
-    y_pred = [2, 3]
-    return: 0.8
-
-    ex2:
-    y_true = ["None"]
-    y_pred = [2, "None"]
-    return: 0.666
-
-    ex3:
-    y_true = [4, 5, 6, 7]
-    y_pred = [2, 4, 8, 9]
-    return: 0.25
-
-    """
-    y_true, y_pred = set(y_true), set(y_pred)
-    tp = len(y_true & y_pred)
-    precision = tp / len(y_pred)
-    recall = tp / len(y_true)
-
-    if precision + recall == 0:
-        return 0
-    return (2 * precision * recall) / (precision + recall)
+logging.basicConfig(format=log_fmt, level=logging.DEBUG)
 
 
 def aaa(folder):
     t = time.time()
     print('start', time.time() - t)
-    df = pd.read_csv('test_data_idx.csv')
+    df = pd.read_csv(folder + 'test_data_idx.csv')
 
-    with open('test_tmp2.pkl', 'rb') as f:
+    with open(folder + 'test_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)[:, 1]
 
     df['pred'] = pred
     return df
 
-df = aaa('./')
+
+df = aaa('./0705_old_rate001/')
 # df2 = aaa('./only_rebuy/')
 # df = df.append(df2)
 # df = df.groupby(['order_id', 'product_id', 'user_id']).max().reset_index()
 
 df = df.sort_values(['order_id', 'pred'], ascending=False)
+df = df[['order_id', 'user_id', 'product_id', 'pred']].values
 
-thresh = 0.194
-map_result = {}
-for row in df.values:
-    order_id, user_id, product_id, pred = row
-    order_id = int(order_id)
+map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
 
-    if order_id not in map_result:
-        map_result[order_id] = []
+map_pred = {}
+n = df.shape[0]
+for i in tqdm(range(n)):
+    order_id, user_id, product_id, pred = df[i]
+    order_id, user_id, product_id = list(map(int, [order_id, user_id, product_id]))
 
-    if pred > thresh:
-        map_result[order_id].append([int(product_id), pred])
+    tmp = map_user_mean[user_id]
+    mean = tmp['mean']
+    std = tmp['std']
+    if order_id not in map_pred:
+        map_pred[order_id] = []
+    map_pred[order_id].append((product_id, pred, mean, std, user_id))
+
+np.random.seed(0)
+NUM = 1000
 
 
-from tqdm import tqdm
+def get_y_true(preds, none_idx):
+    n = preds.shape[0]
+    y_true = np.zeros(n, dtype=np.bool)
+    y_true = np.random.random((NUM, n)) < preds
 
-
-def get_y_true(vals):
-    y_true = [product_id
-              for product_id, pred_val in vals if pred_val > np.random.uniform()]
-    if len(y_true) == 0:
-        y_true = ['None']
+    y_true_sum = y_true.sum(axis=1)
+    y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
 
     return y_true
 
-def add_none(num, sum_pred):
-    score = 2. / (2 + num)
-    if sum_pred  > score:
-        return False
-    else:
-        return True
+
+from scipy.stats import norm
+
+
+def get_cov(user_id):
+    with open('../recommend/cov_data/%s.pkl' % user_id, 'rb') as f:
+        return pickle.load(f)
+
+
+ALPHA = 0.  # float(sys.argv[1])
+logging.info('ALPHA: %s' % ALPHA)
+
+
+def get_y_true2(preds, none_idx, cov_matrix):
+    n = preds.shape[0]
+
+    cov_matrix = ALPHA * cov_matrix + (1 - ALPHA) * np.eye(n)
+
+    tmp = np.random.multivariate_normal(np.zeros(n), cov_matrix, size=NUM)
+    preds = np.array([norm.ppf(q=p, loc=0, scale=np.sqrt(cov_matrix[i, i])) for i, p in enumerate(preds)])
+
+    y_true = preds > tmp
+    y_true_sum = y_true.sum(axis=1)
+    y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
+    return y_true
+
 
 from multiprocessing import Pool
 
@@ -88,34 +95,58 @@ from multiprocessing import Pool
 def uuu(args):
     order_id, vals = args
 
-    sum_pred = sum(pred_val for _, pred_val in vals)
-    if sum_pred < 1:
-        vals += [('None', 1 - sum_pred)]
-        vals = sorted(vals, key=lambda x: x[1], reverse=True)
+    preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
+    items = [int(product_id) for product_id, _, _, _, _ in vals]
 
-    items = [product_id for product_id, _ in vals]
-    scenario = [get_y_true(vals) for _ in range(10000)]
+    user_id = vals[0][4]
 
+    cov_data = get_cov(user_id)
+    idx = [cov_data.map_item2idx[i] for i in items]
+    try:
+        tmp = cov_data.cov_matrix[idx, idx]
+    except:
+        tmp = np.array([[1]])
+    n = preds.shape[0]
+    cov_matrix = np.zeros((n + 1, n + 1))
+    cov_matrix[:n, :n] += tmp
+    cov_matrix[n - 1, n - 1] = 1
+
+    #none_prob = max(1 - preds.sum(), 0) #
+    none_prob = (1 - preds).prod()
+    preds = np.r_[preds, [none_prob]]
+    items.append('None')
+
+    idx = np.argsort(preds)[::-1]
+    preds = preds[idx]
+
+    items = [items[i] for i in idx]  # items[idx]
+    none_idx = idx[-1]
+    # sum_pred = preds.sum()
+    # scenario = get_y_true(preds, none_idx)  # np.array([get_y_true(preds, none_idx) for _ in range(1000)])
+    scenario = get_y_true2(preds, none_idx, cov_matrix)
+    num_y_true = scenario.sum(axis=1)
     scores = []
-    for i in range(len(vals)):
-        pred = items[:i + 1]
-        f1 = np.mean([multilabel_fscore(sc, pred) for sc in scenario])
-        scores.append((f1, pred))
-    #pred = ['None']
-    #f1 = np.mean([multilabel_fscore(sc, pred) for sc in scenario])
-    #scores.append((f1, pred))
-    f1, items = max(scores, key=lambda x: x[0])
-    """
-    if add_none(len(items), f1):
-        if items[0] != 'None':
-            items.append('None')
-    """
-    return order_id, items
+    tp = np.zeros(scenario.shape[0])
+    for i in range(len(preds)):
+        num_y_pred = i + 1
+        tp += scenario[:, i]
+        precision = tp / num_y_pred
+        recall = tp / num_y_true
+        f1 = (2 * precision * recall) / (precision + recall)
+        f1[np.isnan(f1)] = 0
+        f1 = f1.mean()
+        scores.append((f1, i))
+    f1, idx = max(scores, key=lambda x: x[0])
+    score = items[:idx + 1]
 
-#p = Pool()
-result = list(map(uuu, tqdm(map_result.items())))
-# p.close()
-# p.join()
+    return order_id, score
+
+
+p = Pool()
+#result = list(map(uuu, tqdm(map_pred.items())))
+result = list(p.map(uuu, tqdm(map_pred.items())))
+p.close()
+p.join()
 
 f = open('submit.csv', 'w')
 f.write('order_id,products\n')
