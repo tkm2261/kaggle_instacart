@@ -65,12 +65,12 @@ logging.info('user mean')
 map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
 map_result = make_result()
 
-df_val = aaa('./0703/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val.pred += df_val1.pred.values
-df_val1 = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val.pred += df_val1.pred.values
-df_val.pred /= 3
+#df_val = aaa('./0703/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val.pred += df_val1.pred.values
+df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val.pred += df_val1.pred.values
+#df_val.pred /= 3
 
 df_val = df_val.sort_values(['order_id', 'pred'], ascending=False)
 df_val = df_val[['order_id', 'user_id', 'product_id', 'pred']].values
@@ -86,7 +86,7 @@ for i in tqdm(range(n)):
     std = tmp['std']
     if order_id not in map_pred:
         map_pred[order_id] = []
-    map_pred[order_id].append((product_id, pred, mean, std))
+    map_pred[order_id].append((product_id, pred, mean, std, user_id))
 
 
 with open('item_info.pkl', 'wb') as f:
@@ -121,13 +121,30 @@ def get_y_true(preds, none_idx):
         y_true[none_idx] = False
     return y_true
 
+def get_y_true2(preds, none_idx, cov_matrix):
+
+    tmp = np.random.multivariate_normal(preds, cov_matrix, size=1000)
+    y_true = tmp > preds
+    y_true_sum = y_true.sum(axis=1)
+    y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
+    if y_true.sum() == 0:
+        y_true[none_idx] = True
+    else:
+        y_true[none_idx] = False
+    return y_true
+
+def get_cov(user_id):
+    with open('../recommend/cov_data/%s.pkl', 'rb') as f:
+        return pickle.load(f)
 
 def uuu(args):
     order_id, vals = args
 
-    preds = np.array([pred_val for _, pred_val, _, _ in vals])
-    items = [int(product_id) for product_id, _, _, _ in vals]
+    preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
+    items = [int(product_id) for product_id, _, _, _, _ in vals]
 
+    user_id = vals[0][4]
+    cov_matrix = get_cov(user_id)
     #none_prob = max(1 - preds.sum(), 0) #
     none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
@@ -139,8 +156,8 @@ def uuu(args):
     items = [items[i] for i in idx]  # items[idx]
     none_idx = idx[-1]
     sum_pred = preds.sum()
-    scenario = np.array([get_y_true(preds, none_idx) for _ in range(1000)])
-
+    #scenario = np.array([get_y_true(preds, none_idx) for _ in range(1000)])
+    scenario = get_y_true2(preds, none_idx, cov_matrix)
     num_y_true = scenario.sum(axis=1)
     scores = []
     tp = np.zeros(scenario.shape[0])
