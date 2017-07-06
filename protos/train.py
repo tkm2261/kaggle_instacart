@@ -13,20 +13,34 @@ from sklearn.metrics import log_loss, roc_auc_score, f1_score
 import gc
 from logging import getLogger
 logger = getLogger(None)
+import warnings
+warnings.filterwarnings('ignore')
 
 from tqdm import tqdm
 
 from load_data import load_train_data, load_test_data
-
+from features_drop import DROP_FEATURE
 now_order_ids = None
 THRESH = 0.189
 
 list_idx = None
 
+def aaa(arg):
+    return f1_score(*arg)
 
 def f1_metric(label, pred):
     pred = pred > THRESH
-    sc = np.mean([f1_score(pred[i], label[i]) for i in list_idx])
+    tps = pred * label
+    res = []
+    for i in list_idx:
+       tp = tps[i].sum()
+       precision = tp / pred[i].sum()
+       recall = tp / label[i].sum()
+       s = (2 * precision * recall) / precision + recall
+       if np.isnan(s):
+           s = 0
+       res.append(s)
+    sc = np.mean(res)
     return 'f1', sc, True
 
 
@@ -60,6 +74,7 @@ if __name__ == '__main__':
     """
     ###
     x_train, y_train, cv = load_train_data()
+    x_train.drop(DROP_FEATURE, axis=1, inplace=True)
     df.target = y_train
 
     fillna_mean = x_train.mean()
@@ -71,19 +86,19 @@ if __name__ == '__main__':
     gc.collect()
 
     logger.info('load end')
-    all_params = {'max_depth': [5],
+    all_params = {'max_depth': [3, 5, 7],
                   'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
                   'n_estimators': [10000],
-                  'min_child_weight': [10],
+                  'min_child_weight': [5, 10],
                   'colsample_bytree': [0.7],
                   #'boosting_type': ['dart'],  # ['gbdt'],
                   #'xgboost_dart_mode': [False],
                   #'num_leaves': [96],
                   'subsample': [0.9],
                   #'min_child_samples': [10],
-                  #'reg_alpha': [1],
+                  'reg_alpha': [1],
                   #'reg_lambda': [1],
-                  #'max_bin': [500],
+                  'max_bin': [500],
                   'min_split_gain': [0],
                   'silent': [True],
                   'seed': [6436]
@@ -103,7 +118,7 @@ if __name__ == '__main__':
         list_best_iter = []
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
-            list_idx = df.iloc[test, :].reset_index(drop=True).groupby(
+            list_idx = df.loc[test, :].reset_index(drop=True).groupby(
                 'order_id').apply(lambda x: x.index.values).values
 
             trn_x = x_train[train]
@@ -117,7 +132,7 @@ if __name__ == '__main__':
                     # eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=True,
-                    eval_metric=f1_metric,
+                    #eval_metric="auc",
                     early_stopping_rounds=30
                     )
             pred = clf.predict_proba(val_x)[:, 1]
@@ -134,10 +149,10 @@ if __name__ == '__main__':
                 list_best_iter.append(clf.best_iteration)
             else:
                 list_best_iter.append(params['n_estimators'])
-
+           
             with open('train_cv_pred.pkl', 'wb') as f:
                 pickle.dump(pred, f, -1)
-
+            break
         with open('train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
@@ -185,13 +200,10 @@ if __name__ == '__main__':
     with open('fillna_mean.pkl', 'rb') as f:
         fillna_mean = pickle.load(f)
 
-    x_test = load_test_data().fillna(fillna_mean).values
-    """
-    with open('test_word.pkl', 'rb') as f:
-        x = pickle.load(f).astype(np.float32)
-    x_test = np.c_[x_test, x]
-    gc.collect()
-    """
+    x_test = load_test_data()
+    x_test.drop(DROP_FEATURE, axis=1, inplace=True)
+    x_test = x_test.fillna(fillna_mean).values
+
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
