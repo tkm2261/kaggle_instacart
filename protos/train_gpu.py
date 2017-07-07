@@ -77,11 +77,11 @@ if __name__ == '__main__':
 
     ###
     x_train, y_train, cv = load_train_data()
-    x_train.drop(DROP_FEATURE, axis=1, inplace=True)
-
+    #x_train.drop(DROP_FEATURE, axis=1, inplace=True)
+    """
     with open('0705_old_rate001/train_cv_tmp.pkl', 'rb') as f:
         x_train['first'] = pickle.load(f).astype(np.float32)
-
+    """
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
@@ -160,7 +160,7 @@ if __name__ == '__main__':
             del trn_x
             del clf
             gc.collect()
-
+            #break
 
         with open('train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
-    x_test.drop(DROP_FEATURE, axis=1, inplace=True)
+    #x_test.drop(DROP_FEATURE, axis=1, inplace=True)
     with open('0705_old_rate001/test_tmp.pkl', 'rb') as f:
         x_test['first'] = pickle.load(f)[:, 1]
     

@@ -41,12 +41,22 @@ if __name__ == '__main__':
 
     with open('model.pkl', 'rb') as f:
         clf = pickle.load(f)
-    imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
+    try:
+        aaa = clf.feature_importances_
+    except:
+        aaa = clf.feature_importance()
+        
+    imp = pd.DataFrame(aaa, columns=['imp'])
     n_features = imp.shape[0]
     imp_use = imp['imp'] == 0 #.sort_values('imp', ascending=False)
-    drop_col = load_test_data().columns.values[imp_use]
+    drop_col = load_test_data().columns.values#
+    print(drop_col)
+    drop_col = drop_col[imp_use]
     
     logger.info('imp use {} {}'.format(imp_use.shape, n_features, drop_col))
     with open('features_tmp.py', 'w') as f:
         f.write('DROP_FEATURE = ["' + '", "'.join(map(str, drop_col)) + '"]\n')
+
+    with open('features_use.py', 'w') as f:
+        f.write('FEATURE = ["' + '", "'.join(map(str, drop_col)) + '"]\n')
 

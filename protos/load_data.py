@@ -17,7 +17,7 @@ TEST_DATA_PATH = 'test_all.pkl'
 from logging import getLogger
 logger = getLogger(__name__)
 
-from features_drop2 import DROP_FEATURE
+from features_drop import DROP_FEATURE
 
 
 def read_csv(filename):
@@ -88,8 +88,6 @@ def read_csv(filename):
     #df.drop(cum_cols, axis=1, inplace=True)
 
     gc.collect()
-    dd = set(df.columns.values.tolist()) & set(DROP_FEATURE)
-    df.drop(list(dd), axis=1, inplace=True)
 
     return df.astype(np.float32)
 
@@ -156,7 +154,7 @@ def load_train_data():
                 'product_reorder_rate', 'UP_orders', 'UP_orders_ratio',
                 'UP_average_pos_in_cart', 'UP_reorder_rate', 'UP_orders_since_last',
                 'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order
-    f_to_use = set(f_to_use) & set(DROP_FEATURE)
+    #f_to_use = sorted(list(set(f_to_use) & set(DROP_FEATURE)))
     df2 = df2[f_to_use].astype(np.float32)
 
     gc.collect()
@@ -183,6 +181,7 @@ def load_train_data():
     logger.info('etl data')
     target = df['target'].values
     df.drop('target', axis=1, inplace=True)
+    target = rrr()
 
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
@@ -196,7 +195,7 @@ def load_train_data():
     gc.collect()
 
     logger.info('dump data')
-
+    df.drop(DROP_FEATURE, axis=1, inplace=True)
     with open(TRAIN_DATA_PATH, 'wb') as f:
         pickle.dump((df, target, list_cv), f, -1)
 
@@ -231,7 +230,7 @@ def load_test_data():
                 'product_reorder_rate', 'UP_orders', 'UP_orders_ratio',
                 'UP_average_pos_in_cart', 'UP_reorder_rate', 'UP_orders_since_last',
                 'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order'
-    f_to_use = set(f_to_use) & set(DROP_FEATURE)
+    #f_to_use = sorted(list(set(f_to_use) & set(DROP_FEATURE)))    
     df2 = df2[f_to_use]
     df = pd.merge(df, df2, how='left', left_on=['o_order_id', 'o_user_id', 'o_product_id'],
                   right_on=['order_id', 'user_id', 'product_id'])
@@ -250,6 +249,7 @@ def load_test_data():
     df.drop(id_cols, axis=1, inplace=True)
 
     logger.info('dump data')
+    df.drop(DROP_FEATURE, axis=1, inplace=True)    
     with open(TEST_DATA_PATH, 'wb') as f:
         pickle.dump(df, f, -1)
 
