@@ -17,8 +17,11 @@ TEST_DATA_PATH = 'test_all.pkl'
 from logging import getLogger
 logger = getLogger(__name__)
 
+from features_drop2 import DROP_FEATURE
+
 
 def read_csv(filename):
+    logger.info(filename)
     df = pd.read_csv(filename).astype(np.float32)
 
     def normarize(col_name):
@@ -46,10 +49,10 @@ def read_csv(filename):
     drop('u3_u3_order_hour_of_day')
     drop('u3_u4_department_id')
 
-    drop('^u4')    
-    #drop('u4_u2_order_dow')
-    #drop('u4_u3_order_hour_of_day')
-    #drop('u4_u4_department_id')
+    drop('^u4')
+    # drop('u4_u2_order_dow')
+    # drop('u4_u3_order_hour_of_day')
+    # drop('u4_u4_department_id')
     gc.collect()
 
     normarize('i_i2_order_dow')
@@ -66,9 +69,9 @@ def read_csv(filename):
     drop('i3_i4_department_id')
 
     drop('^i4')
-    #drop('i4_i2_order_dow')
-    #drop('i4_i3_order_hour_of_day')
-    #drop('i4_i4_department_id')
+    # drop('i4_i2_order_dow')
+    # drop('i4_i3_order_hour_of_day')
+    # drop('i4_i4_department_id')
 
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
@@ -82,14 +85,17 @@ def read_csv(filename):
     df['since_last_visit_order'] = (df['o_order_number'] - df['l_max_order_number']).astype(np.float32)
     df['since_last_visit_aisle'] = (df['o_order_number'] - df['la_max_order_number']).astype(np.float32)
     df['since_last_visit_depart'] = (df['o_order_number'] - df['ld_max_order_number']).astype(np.float32)
-
-    df.drop(cum_cols, axis=1, inplace=True)
+    #df.drop(cum_cols, axis=1, inplace=True)
 
     gc.collect()
+    dd = set(df.columns.values.tolist()) & set(DROP_FEATURE)
+    df.drop(list(dd), axis=1, inplace=True)
+
     return df.astype(np.float32)
 
 
 def read_multi_csv(folder):
+    logger.info('enter')
     paths = glob.glob(folder + '/*.csv.gz')
     logger.info(folder)
     logger.info('file_num: %s' % len(paths))
@@ -111,12 +117,15 @@ def read_multi_csv(folder):
         del tmp
         gc.collect()
     """
+    logger.info('exit')
     return df
+
 
 def rrr():
     df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
     df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
     return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(0).values
+
 
 def load_train_data():
     logger.info('enter')
@@ -129,7 +138,6 @@ def load_train_data():
             target = rrr()
             return data, target, list_cv
     logger.info('load data')
-
     df = read_multi_csv(TRAIN_DATA_FOLDER)
     with open('train_data.pkl', 'wb') as f:
         pickle.dump(df, f, -1)
@@ -147,9 +155,10 @@ def load_train_data():
                 'aisle_id', 'department_id', 'product_orders', 'product_reorders',
                 'product_reorder_rate', 'UP_orders', 'UP_orders_ratio',
                 'UP_average_pos_in_cart', 'UP_reorder_rate', 'UP_orders_since_last',
-                'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order'
-
+                'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order
+    f_to_use = set(f_to_use) & set(DROP_FEATURE)
     df2 = df2[f_to_use].astype(np.float32)
+
     gc.collect()
     logger.info('load base merge')
     df = pd.merge(df, df2, how='left', left_on=['o_order_id', 'o_user_id', 'o_product_id'],
@@ -175,7 +184,12 @@ def load_train_data():
     target = df['target'].values
     df.drop('target', axis=1, inplace=True)
 
-    id_cols = [col for col in df.columns.values if re.search('_id$', col) is not None]
+    id_cols = [col for col in df.columns.values
+               if re.search('_id$', col) is not None and
+               'aisle' not in col and
+               'depart' not in col and
+               'user' not in col]
+    logger.info('drop id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
 
     #df.drop(cum_cols, axis=1, inplace=True)
@@ -217,6 +231,7 @@ def load_test_data():
                 'product_reorder_rate', 'UP_orders', 'UP_orders_ratio',
                 'UP_average_pos_in_cart', 'UP_reorder_rate', 'UP_orders_since_last',
                 'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order'
+    f_to_use = set(f_to_use) & set(DROP_FEATURE)
     df2 = df2[f_to_use]
     df = pd.merge(df, df2, how='left', left_on=['o_order_id', 'o_user_id', 'o_product_id'],
                   right_on=['order_id', 'user_id', 'product_id'])
@@ -226,7 +241,12 @@ def load_test_data():
     _df.to_csv('test_data_idx.csv', index=False)
 
     logger.info('etl data')
-    id_cols = [col for col in df.columns.values if re.search('_id$', col) is not None]
+    id_cols = [col for col in df.columns.values
+               if re.search('_id$', col) is not None and
+               'aisle' not in col and
+               'depart' not in col and
+               'user' not in col]
+    logger.info('drop id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
 
     logger.info('dump data')
