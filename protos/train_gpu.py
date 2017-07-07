@@ -64,7 +64,7 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     logger.info('load start')
-    """
+
     df = pd.read_csv('train_data_idx.csv')
 
     weight_col = 'order_id'
@@ -74,13 +74,14 @@ if __name__ == '__main__':
     df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
     sample_weight = 1 / df['weight'].values
     sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
-    """
+
     ###
     x_train, y_train, cv = load_train_data()
     x_train.drop(DROP_FEATURE, axis=1, inplace=True)
-    with open('train_cv_tmp.pkl', 'rb') as f:
+
+    with open('0705_old_rate001/train_cv_tmp.pkl', 'rb') as f:
         x_train['first'] = pickle.load(f).astype(np.float32)
-    
+
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
@@ -116,7 +117,7 @@ if __name__ == '__main__':
     min_params = None
     #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
-    """
+
     for params in tqdm(list(ParameterGrid(all_params))):
 
         cnt = 0
@@ -159,7 +160,8 @@ if __name__ == '__main__':
             del trn_x
             del clf
             gc.collect()
-            break
+
+
         with open('train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
@@ -182,10 +184,7 @@ if __name__ == '__main__':
         logger.info('best score2: {} {}'.format(min_score2[use_score], min_score2))
         logger.info('best score3: {} {}'.format(min_score3[use_score], min_score3))
         logger.info('best_param: {}'.format(min_params))
-    """
-    for params in tqdm(list(ParameterGrid(all_params))):
-        min_params = params
-        trees = 10
+ 
     gc.collect()
     train_data = lgb.Dataset(x_train, label=y_train)
     logger.info('train start')
@@ -214,7 +213,7 @@ if __name__ == '__main__':
 
     x_test = load_test_data()
     x_test.drop(DROP_FEATURE, axis=1, inplace=True)
-    with open('test_tmp.pkl', 'rb') as f:
+    with open('0705_old_rate001/test_tmp.pkl', 'rb') as f:
         x_test['first'] = pickle.load(f)[:, 1]
     
     x_test = x_test.fillna(fillna_mean).values
@@ -222,6 +221,8 @@ if __name__ == '__main__':
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
-    p_test = clf.predict(x_test)
+    _p_test = clf.predict(x_test)
+    p_test = np.zeros((_p_test.shape[0], 2))
+    p_test[:, 1] = _p_test
     with open('test_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)
