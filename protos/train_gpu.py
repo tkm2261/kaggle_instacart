@@ -137,6 +137,7 @@ if __name__ == '__main__':
             clf = lgb.train(params,
                             train_data,
                             10000,#params['n_estimators'],
+                            learning_rate=0.01,
                             early_stopping_rounds=30,
                             valid_sets=[test_data])
             pred = clf.predict(val_x)
@@ -159,7 +160,7 @@ if __name__ == '__main__':
             del trn_x
             del clf
             gc.collect()
-            #break
+            break
         with open('train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
