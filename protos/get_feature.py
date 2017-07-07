@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     logger.info('load start')
 
-    with open('0705_old_rate001/model.pkl', 'rb') as f:
+    with open('model.pkl', 'rb') as f:
         clf = pickle.load(f)
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
     n_features = imp.shape[0]

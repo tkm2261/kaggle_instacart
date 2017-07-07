@@ -49,21 +49,22 @@ if __name__ == '__main__':
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
 
     log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
+    handler = StreamHandler()
+    handler.setLevel('INFO')
+    handler.setFormatter(log_fmt)
+    logger.addHandler(handler)
+
     handler = FileHandler('train.py.log', 'w')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
 
-    handler = StreamHandler()
-    handler.setLevel('INFO')
-    handler.setFormatter(log_fmt)
-    logger.setLevel('INFO')
-    logger.addHandler(handler)
 
     logger.info('load start')
-    df = pd.read_csv('train_data_idx.csv')
     """
+    df = pd.read_csv('train_data_idx.csv')
+
     weight_col = 'order_id'
     order_idx = df.order_id.values
     tmp = df.groupby(weight_col)[[weight_col]].count()
@@ -75,21 +76,22 @@ if __name__ == '__main__':
     ###
     x_train, y_train, cv = load_train_data()
     x_train.drop(DROP_FEATURE, axis=1, inplace=True)
-    df.target = y_train
+    #df.target = y_train
 
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
 
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
-    #x_train[np.isnan(x_train)] = -100
+    #x_train[np.isnan(x_train)] = -10
     gc.collect()
 
     logger.info('load end')
-    all_params = {'max_depth': [3, 5, 7],
+    #{'seed': 6436, 'n_estimators': 809, 'learning_rate': 0.1, 'silent': True, 'subsample': 0.9, 'reg_alpha': 1, 'max_depth': 5, 'colsample_bytree': 0.7, 'min_child_weight': 5, 'max_bin': 500, 'min_split_gain': 0}
+    all_params = {'max_depth': [5],
                   'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
                   'n_estimators': [10000],
-                  'min_child_weight': [5, 10],
+                  'min_child_weight': [5],
                   'colsample_bytree': [0.7],
                   #'boosting_type': ['dart'],  # ['gbdt'],
                   #'xgboost_dart_mode': [False],
@@ -118,8 +120,6 @@ if __name__ == '__main__':
         list_best_iter = []
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
-            list_idx = df.loc[test, :].reset_index(drop=True).groupby(
-                'order_id').apply(lambda x: x.index.values).values
 
             trn_x = x_train[train]
             val_x = x_train[test]
@@ -141,7 +141,7 @@ if __name__ == '__main__':
             _score = log_loss(val_y, pred)
             _score2 = - roc_auc_score(val_y, pred)
             _score3 = - f1_score(val_y, pred > THRESH)
-            # logger.debug('   _score: %s' % _score)
+            logger.debug('   _score: %s' % _score)
             list_score.append(_score)
             list_score2.append(_score2)
             list_score3.append(_score3)
@@ -152,7 +152,9 @@ if __name__ == '__main__':
            
             with open('train_cv_pred.pkl', 'wb') as f:
                 pickle.dump(pred, f, -1)
-            break
+            del trn_x
+            del clf
+            gc.collect()
         with open('train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
