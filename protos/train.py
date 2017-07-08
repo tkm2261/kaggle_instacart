@@ -75,7 +75,7 @@ if __name__ == '__main__':
     """
     ###
     x_train, y_train, cv = load_train_data()
-    x_train.drop(DROP_FEATURE, axis=1, inplace=True)
+    #x_train.drop(DROP_FEATURE, axis=1, inplace=True)
     #df.target = y_train
 
     fillna_mean = x_train.mean()
@@ -203,7 +203,7 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
-    x_test.drop(DROP_FEATURE, axis=1, inplace=True)
+    #x_test.drop(DROP_FEATURE, axis=1, inplace=True)
     x_test = x_test.fillna(fillna_mean).values
 
     if x_test.shape[1] != n_features:
