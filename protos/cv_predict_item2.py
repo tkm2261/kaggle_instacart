@@ -70,9 +70,17 @@ map_result = make_result()
 #df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val.pred += df_val1.pred.values
 df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./0706_tuned/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val2 = aaa('./0708_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val.pred += df_val1.pred.values
-#df_val.pred /= 2
+#df_val = aaa('./0707_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val.pred += df_val1.pred.values
+#df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+
+#df_val.pred = np.max(np.vstack([df_val.pred.values, df_val1.pred.values]), axis=0)
+#df_val.pred = np.max(np.vstack([df_val.pred.values, df_val2.pred.values]), axis=0)
+
 
 df_val = df_val.sort_values(['order_id', 'pred'], ascending=False)
 df_val = df_val[['order_id', 'user_id', 'product_id', 'pred']].values
@@ -108,7 +116,7 @@ def add_none(num, sum_pred, safe):
 
 
 np.random.seed(0)
-NUM = 1000
+NUM = 2000
 
 
 def get_y_true(preds, none_idx):
@@ -130,8 +138,10 @@ def get_cov(user_id):
         return pickle.load(f)
 
 
-ALPHA = float(sys.argv[1])
+ALPHA = 0.3  # float(sys.argv[1])
+THRESH_NUM = int(sys.argv[1])
 logging.info('ALPHA: %s' % ALPHA)
+logging.info('THRESH_NUM: %s' % THRESH_NUM)
 
 
 def get_y_true2(preds, none_idx, cov_matrix):
@@ -148,26 +158,33 @@ def get_y_true2(preds, none_idx, cov_matrix):
     return y_true
 
 
+IS_COV = True
+with open('map_user_order_num.pkl', 'rb') as f:
+    map_user_order_num = pickle.load(f)
+
+
 def uuu(args):
     order_id, vals = args
 
     preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
     items = [int(product_id) for product_id, _, _, _, _ in vals]
 
-    user_id = vals[0][4]
+    if IS_COV:
+        user_id = vals[0][4]
+        n = preds.shape[0]
+        if map_user_order_num[user_id] >= 10:
+            cov_data = get_cov(user_id)
+            idx = [cov_data.map_item2idx[i] for i in items]
+            try:
+                tmp = cov_data.cov_matrix[idx, idx]
+            except:
+                tmp = np.array([[1]])
+            cov_matrix = np.zeros((n + 1, n + 1))
+            cov_matrix[:n, :n] += tmp
+            cov_matrix[n - 1, n - 1] = 1
+        else:
+            cov_matrix = np.eye(n + 1)
 
-    cov_data = get_cov(user_id)
-    idx = [cov_data.map_item2idx[i] for i in items]
-    try:
-        tmp = cov_data.cov_matrix[idx, idx]
-    except:
-        tmp = np.array([[1]])
-    n = preds.shape[0]
-    cov_matrix = np.zeros((n + 1, n + 1))
-    cov_matrix[:n, :n] += tmp
-    cov_matrix[n - 1, n - 1] = 1
-
-    #none_prob = max(1 - preds.sum(), 0) #
     none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
     items.append('None')
@@ -178,8 +195,11 @@ def uuu(args):
     items = [items[i] for i in idx]  # items[idx]
     none_idx = idx[-1]
     #sum_pred = preds.sum()
-    # scenario = get_y_true(preds, none_idx)  # np.array([get_y_true(preds, none_idx) for _ in range(1000)])
-    scenario = get_y_true2(preds, none_idx, cov_matrix)
+    if IS_COV:
+        scenario = get_y_true2(preds, none_idx, cov_matrix)
+    else:
+        scenario = get_y_true(preds, none_idx)  # np.array([get_y_true(preds, none_idx) for _ in range(1000)])
+
     num_y_true = scenario.sum(axis=1)
     scores = []
     tp = np.zeros(scenario.shape[0])
@@ -208,7 +228,7 @@ def uuu(args):
 
 def sss2(map_pred):
     res = []
-    p = Pool()
+    p = Pool(7)
     aaaa = sorted(map_pred.items(), key=lambda x: x[0])
     res = p.map(uuu, tqdm(aaaa))
     #res = list(map(uuu, tqdm(aaaa)))
