@@ -83,6 +83,8 @@ def uuu(args):
         recall = tp / num_y_true
         f1 = (2 * precision * recall) / (precision + recall)
         scores.append((f1, i))
+    f1, idx = max(scores, key=lambda x: x[0])
+    score = items[:idx + 1]
 
     data = [f1, idx, len(items), preds[idx], preds[min(idx + 1, len(items) - 1)], preds.sum(), preds.mean(), preds.min(), preds.max(),
             mean, std, map_user_order_num[user_id], map_reoder_rate[user_id]]
@@ -91,15 +93,13 @@ def uuu(args):
     with open('final_data_test/%s.csv' % order_id, 'w') as f:
         f.write(str_data + '\n')
 
-    f1, idx = max(scores, key=lambda x: x[0])
-    score = items[:idx + 1]
 
     return order_id, score
 
 
 p = Pool()
-result = list(map(uuu, tqdm(map_pred.items())))
-#result = list(p.map(uuu, tqdm(map_pred.items())))
+#result = list(map(uuu, tqdm(map_pred.items())))
+result = list(p.map(uuu, tqdm(map_pred.items())))
 p.close()
 p.join()
 
