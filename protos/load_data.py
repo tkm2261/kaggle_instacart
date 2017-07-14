@@ -63,9 +63,17 @@ def read_csv(filename):
     df['since_last_aisle2'] = (df['o_cum_days'] - df['la2_cum_days']).astype(np.float32)
     df['since_last_depart2'] = (df['o_cum_days'] - df['ld2_cum_days']).astype(np.float32)
 
+    df['since_last_order3'] = (df['o_cum_days'] - df['l3_cum_days']).astype(np.float32)
+    df['since_last_aisle3'] = (df['o_cum_days'] - df['la3_cum_days']).astype(np.float32)
+    df['since_last_depart3'] = (df['o_cum_days'] - df['ld3_cum_days']).astype(np.float32)
+
     df['since_last_order_diff'] = (df['since_last_order'] - df['since_last_order2']).astype(np.float32)
     df['since_last_aisle_diff'] = (df['since_last_aisle'] - df['since_last_aisle2']).astype(np.float32)
     df['since_last_depart_diff'] = (df['since_last_depart'] - df['since_last_depart2']).astype(np.float32)
+
+    df['since_last_order_diff2'] = (df['since_last_order'] - df['since_last_order3']).astype(np.float32)
+    df['since_last_aisle_diff2'] = (df['since_last_aisle'] - df['since_last_aisle3']).astype(np.float32)
+    df['since_last_depart_diff2'] = (df['since_last_depart'] - df['since_last_depart3']).astype(np.float32)
     
     df['since_last_visit_order'] = (df['o_order_number'] - df['l_max_order_number']).astype(np.float32)
     df['since_last_visit_aisle'] = (df['o_order_number'] - df['la_max_order_number']).astype(np.float32)
@@ -167,16 +175,21 @@ def load_train_data():
     logger.info('etl data')
     target = df['target'].values
     df.drop('target', axis=1, inplace=True)
-    #target = rrr()
+    target = rrr()
     """
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
                'aisle' not in col and
                'depart' not in col and
                'user' not in col]
+
+    """
+    id_cols = [col for col in df.columns.values
+               if re.search('_id$', col) is not None]
+    
     logger.info('drop id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
-    """
+
     #df.drop(cum_cols, axis=1, inplace=True)
     gc.collect()
 
@@ -231,9 +244,12 @@ def load_test_data():
                'aisle' not in col and
                'depart' not in col and
                'user' not in col]
+    """
+
+    id_cols = [col for col in df.columns.values
+               if re.search('_id$', col) is not None]
     logger.info('drop id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
-    """
     logger.info('dump data')
     #df.drop(DROP_FEATURE, axis=1, inplace=True)    
     with open(TEST_DATA_PATH, 'wb') as f:
