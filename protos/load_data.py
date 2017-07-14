@@ -59,6 +59,14 @@ def read_csv(filename):
     df['since_last_aisle'] = (df['o_cum_days'] - df['la_cum_days']).astype(np.float32)
     df['since_last_depart'] = (df['o_cum_days'] - df['ld_cum_days']).astype(np.float32)
 
+    df['since_last_order2'] = (df['o_cum_days'] - df['l2_cum_days']).astype(np.float32)
+    df['since_last_aisle2'] = (df['o_cum_days'] - df['la2_cum_days']).astype(np.float32)
+    df['since_last_depart2'] = (df['o_cum_days'] - df['ld2_cum_days']).astype(np.float32)
+
+    df['since_last_order_diff'] = (df['since_last_order'] - df['since_last_order2']).astype(np.float32)
+    df['since_last_aisle_diff'] = (df['since_last_aisle'] - df['since_last_aisle2']).astype(np.float32)
+    df['since_last_depart_diff'] = (df['since_last_depart'] - df['since_last_depart2']).astype(np.float32)
+    
     df['since_last_visit_order'] = (df['o_order_number'] - df['l_max_order_number']).astype(np.float32)
     df['since_last_visit_aisle'] = (df['o_order_number'] - df['la_max_order_number']).astype(np.float32)
     df['since_last_visit_depart'] = (df['o_order_number'] - df['ld_max_order_number']).astype(np.float32)
@@ -114,9 +122,10 @@ def load_train_data():
             return data, target, list_cv
     logger.info('load data')
     df = read_multi_csv(TRAIN_DATA_FOLDER)
+    """
     with open('train_data.pkl', 'wb') as f:
         pickle.dump(df, f, -1)
-    """
+
     with open('train_data.pkl', 'rb') as f:
         df = pickle.load(f)
     """

@@ -56,7 +56,7 @@ if __name__ == '__main__':
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
     all_params = {'max_depth': [5],
-                  'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
+                  'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
                   'n_estimators': [20000],
                   'min_child_weight': [10],
                   'colsample_bytree': [0.7],
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     #x_train.drop(usecols, axis=1, inplace=True)
     #df.target = y_train
-    x_train = x_train[FEATURE]
+    #x_train = x_train[FEATURE]
     """
     with open('0713_1691/train_cv_tmp.pkl', 'rb') as f:
         x_train['first'] = pickle.load(f).astype(np.float32) 
@@ -141,10 +141,10 @@ if __name__ == '__main__':
             clf.fit(trn_x, trn_y,
                     # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
-                    #eval_set=[(val_x, val_y)],
+                    eval_set=[(val_x, val_y)],
                     verbose=True,
-                    # eval_metric=f1_metric,
-                    # early_stopping_rounds=150
+                    eval_metric=f1_metric,
+                    early_stopping_rounds=150
                     )
             pred = clf.predict_proba(val_x)[:, 1]
             all_pred[test] = pred
