@@ -65,19 +65,20 @@ logging.info('user mean')
 map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
 map_result = make_result()
 
-# df_val = aaa('./0703/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
+#df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val = aaa('./0706_tuned/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val2 = aaa('./0708_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val2 = aaa('./0708_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 # df_val = aaa('./0707_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 # df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-df_val.pred = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values, df_val2.pred.values]), axis=0)
+#df_val.pred = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values]), axis=0)
 # df_val.pred = np.max(np.vstack([df_val.pred.values, df_val2.pred.values]), axis=0)
 
 
@@ -164,8 +165,6 @@ with open('map_user_order_num.pkl', 'rb') as f:
 with open('map_reoder_rate.pkl', 'rb') as f:
     map_reoder_rate = pickle.load(f)
 
-with open('map_order_cv_final.pkl', 'rb') as f:
-    map_order_cv_final = pickle.load(f)
 
 df_a = pd.read_csv('../input/df_train.csv', usecols=['product_id', 'reordered'], dtype=int)
 # set_product = set(df_a[df_a['reordered'] == 1]['product_id'].unique().tolist())
@@ -289,7 +288,6 @@ def uuu(args):
     idxs = []
     _preds = preds.copy()
     for _ in range(1):
-        preds = np.array([p * 0.9 if np.random.random() > 0.5 else p * 1.1 for p in _preds])
         scores = []
         num_y_true = preds.sum()
         tp = 0

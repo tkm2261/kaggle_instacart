@@ -87,8 +87,6 @@ with open('map_user_order_num.pkl', 'rb') as f:
 with open('map_reoder_rate.pkl', 'rb') as f:
     map_reoder_rate = pickle.load(f)
 
-with open('map_order_cv_final.pkl', 'rb') as f:
-    map_order_cv_final = pickle.load(f)
 
 df_a = pd.read_csv('../input/df_train.csv', usecols=['product_id', 'reordered'], dtype=int)
 # set_product = set(df_a[df_a['reordered'] == 1]['product_id'].unique().tolist())

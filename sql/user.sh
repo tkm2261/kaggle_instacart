@@ -13,7 +13,6 @@ SELECT
   AVG(days_since_prior_order) as avg_days_since_prior_order,
   MAX(days_since_prior_order) as max_days_since_prior_order,
   MIN(days_since_prior_order) as min_days_since_prior_order,
-  AVG(days_since_prior_order) as avg_days_since_prior_order,
   MAX(order_hour_of_day) as max_order_hour_of_day,
   MIN(order_hour_of_day) as min_order_hour_of_day,
   AVG(order_hour_of_day) as avg_order_hour_of_day,

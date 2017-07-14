@@ -50,11 +50,6 @@ if __name__ == '__main__':
     handler.setFormatter(log_fmt)
     logger.addHandler(handler)
 
-    handler = FileHandler('train2.py.log', 'a')
-    handler.setLevel(DEBUG)
-    handler.setFormatter(log_fmt)
-    logger.setLevel(DEBUG)
-    logger.addHandler(handler)
     all_params = {'max_depth': [5],
                   'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
                   'n_estimators': [20000],
@@ -96,16 +91,14 @@ if __name__ == '__main__':
     #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     #x_train.drop(usecols, axis=1, inplace=True)
     #df.target = y_train
-    x_train = x_train[FEATURE]
+
     """
     with open('0713_1691/train_cv_tmp.pkl', 'rb') as f:
         x_train['first'] = pickle.load(f).astype(np.float32) 
     """
 
     fillna_mean = x_train.mean()
-    with open('fillna_mean.pkl', 'wb') as f:
-        pickle.dump(fillna_mean, f, -1)
-
+    '''
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
     #x_train[np.isnan(x_train)] = -10
     gc.collect()
@@ -204,28 +197,21 @@ if __name__ == '__main__':
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
-
+    '''
     ###
-    with open('model.pkl', 'rb') as f:
+    with open('0714_10000loop/model.pkl', 'rb') as f:
         clf = pickle.load(f)
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
     n_features = imp.shape[0]
-    imp_use = imp[imp['imp'] > 0].sort_values('imp', ascending=False)
-    logger.info('imp use {} {}'.format(imp_use.shape, n_features))
-    with open('features_train.py', 'w') as f:
-        f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
-
-    with open('fillna_mean.pkl', 'rb') as f:
-        fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
     #x_test.drop(usecols, axis=1, inplace=True)
-    x_test = x_test[FEATURE]
+
     x_test = x_test.fillna(fillna_mean).values
 
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
     p_test = clf.predict_proba(x_test)
-    with open('test_tmp.pkl', 'wb') as f:
+    with open('0714_10000loop/test_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)

@@ -41,41 +41,18 @@ def read_csv(filename):
     normarize('u_u4_department_id')
     gc.collect()
 
-    normarize('u2_u2_order_dow')
-    drop('u2_u3_order_hour_of_day')
-    drop('u2_u4_department_id')
-
-    drop('u3_u2_order_dow')
-    drop('u3_u3_order_hour_of_day')
-    drop('u3_u4_department_id')
-
-    drop('^u4')
-    # drop('u4_u2_order_dow')
-    # drop('u4_u3_order_hour_of_day')
-    # drop('u4_u4_department_id')
     gc.collect()
 
     normarize('i_i2_order_dow')
     normarize('i_i3_order_hour_of_day')
     normarize('i_i4_department_id')
 
-    normarize('i2_i2_order_dow')
-    drop('i2_i3_order_hour_of_day')
-    drop('i2_i4_department_id')
-
-    gc.collect()
-    drop('i3_i2_order_dow')
-    drop('i3_i3_order_hour_of_day')
-    drop('i3_i4_department_id')
-
-    drop('^i4')
-    # drop('i4_i2_order_dow')
-    # drop('i4_i3_order_hour_of_day')
-    # drop('i4_i4_department_id')
 
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
     gc.collect()
+
+    drop('u.14')
 
     cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
     df['since_last_order'] = (df['o_cum_days'] - df['l_cum_days']).astype(np.float32)
@@ -99,7 +76,7 @@ def read_multi_csv(folder):
     logger.info('file_num: %s' % len(paths))
     df = None  # pd.DataFrame()
 
-    p = Pool(4)
+    p = Pool(8)
     df = pd.concat(p.map(read_csv, paths), ignore_index=True, copy=False)
     p.close()
     p.join()
@@ -181,8 +158,8 @@ def load_train_data():
     logger.info('etl data')
     target = df['target'].values
     df.drop('target', axis=1, inplace=True)
-    target = rrr()
-
+    #target = rrr()
+    """
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
                'aisle' not in col and
@@ -190,12 +167,11 @@ def load_train_data():
                'user' not in col]
     logger.info('drop id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
-
+    """
     #df.drop(cum_cols, axis=1, inplace=True)
     gc.collect()
 
     logger.info('dump data')
-    df.drop(DROP_FEATURE, axis=1, inplace=True)
     with open(TRAIN_DATA_PATH, 'wb') as f:
         pickle.dump((df, target, list_cv), f, -1)
 
@@ -240,6 +216,7 @@ def load_test_data():
     _df.to_csv('test_data_idx.csv', index=False)
 
     logger.info('etl data')
+    """
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
                'aisle' not in col and
@@ -247,9 +224,9 @@ def load_test_data():
                'user' not in col]
     logger.info('drop id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
-
+    """
     logger.info('dump data')
-    df.drop(DROP_FEATURE, axis=1, inplace=True)    
+    #df.drop(DROP_FEATURE, axis=1, inplace=True)    
     with open(TEST_DATA_PATH, 'wb') as f:
         pickle.dump(df, f, -1)
 

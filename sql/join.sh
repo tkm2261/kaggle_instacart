@@ -97,6 +97,8 @@ SELECT
   a.user_id as user_id,
   a.product_id as product_id,
   a.max_order_number as max_order_number,
+  a.max_reordered as max_reordered,
+  a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days
 FROM
@@ -104,6 +106,8 @@ FROM
   SELECT
     user_id,
     product_id,
+    max(reordered) as max_reordered,
+    avg(reordered) as avg_reordered,
     MAX(order_number) as max_order_number
   FROM
     [instacart.df_prior]
@@ -128,6 +132,8 @@ SELECT
   a.user_id as user_id,
   a.aisle_id as aisle_id,
   a.max_order_number as max_order_number,
+  a.max_reordered as max_reordered,
+  a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days
 FROM
@@ -135,6 +141,8 @@ FROM
   SELECT
     user_id,
     aisle_id,
+    max(reordered) as max_reordered,
+    avg(reordered) as avg_reordered,
     MAX(order_number) as max_order_number
   FROM
     [instacart.df_prior]
@@ -158,6 +166,8 @@ SELECT
   a.user_id as user_id,
   a.department_id as department_id,
   a.max_order_number as max_order_number,
+  a.max_reordered as max_reordered,
+  a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days
 FROM
@@ -165,6 +175,8 @@ FROM
   SELECT
     user_id,
     department_id,
+    max(reordered) as max_reordered,
+    avg(reordered) as avg_reordered,
     MAX(order_number) as max_order_number
   FROM
     [instacart.df_prior]
@@ -183,6 +195,161 @@ ON
   c.order_id = o.order_id
 "
 
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_item_30" --flatten_results --replace "
+SELECT
+  a.user_id as user_id,
+  a.product_id as product_id,
+  count(1) cnt_user_item,
+  count(distinct a.order_id) cnt_user_order,
+  avg(a.order_hour_of_day) avg_order_hour_of_day,
+  min(a.order_hour_of_day) min_order_hour_of_day,
+  max(a.order_hour_of_day) max_order_hour_of_day,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered,
+  AVG(a.days_since_prior_order) as avg_days_since_prior_order,
+  MAX(a.days_since_prior_order) as max_days_since_prior_order,
+  MIN(a.days_since_prior_order) as min_days_since_prior_order,
+  sum(CASE WHEN a.order_dow = 0  THEN 1 ELSE 0 END) AS  order_dow_0,
+  sum(CASE WHEN a.order_dow = 1  THEN 1 ELSE 0 END) AS  order_dow_1,
+  sum(CASE WHEN a.order_dow = 2  THEN 1 ELSE 0 END) AS  order_dow_2,
+  sum(CASE WHEN a.order_dow = 3  THEN 1 ELSE 0 END) AS  order_dow_3,
+  sum(CASE WHEN a.order_dow = 4  THEN 1 ELSE 0 END) AS  order_dow_4,
+  sum(CASE WHEN a.order_dow = 5  THEN 1 ELSE 0 END) AS  order_dow_5,
+  sum(CASE WHEN a.order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6,
+  avg(CASE WHEN a.order_dow = 0  THEN a.reordered ELSE null END) AS  reorder_dow_0,
+  avg(CASE WHEN a.order_dow = 1  THEN a.reordered ELSE null END) AS  reorder_dow_1,
+  avg(CASE WHEN a.order_dow = 2  THEN a.reordered ELSE null END) AS  reorder_dow_2,
+  avg(CASE WHEN a.order_dow = 3  THEN a.reordered ELSE null END) AS  reorder_dow_3,
+  avg(CASE WHEN a.order_dow = 4  THEN a.reordered ELSE null END) AS  reorder_dow_4,
+  avg(CASE WHEN a.order_dow = 5  THEN a.reordered ELSE null END) AS  reorder_dow_5,
+  avg(CASE WHEN a.order_dow = 6  THEN a.reordered ELSE null END) AS  reorder_dow_6
+FROM
+  [instacart.df_prior] as a
+LEFT OUTER JOIN
+  [instacart.cum_orders] as b
+ON
+  a.order_id = b.order_id
+WHERE
+  b.last_buy <= 30
+GROUP BY
+  user_id, product_id
+"
+
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_aisle_30" --flatten_results --replace "
+SELECT
+  a.user_id as user_id,
+  a.aisle_id as aisle_id,
+  count(1) cnt_user_aisle,
+  count(distinct a.order_id) cnt_aisle_order,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered
+FROM
+  [instacart.df_prior] as a
+LEFT OUTER JOIN
+  [instacart.cum_orders] as b
+ON
+  a.order_id = b.order_id
+WHERE
+  b.last_buy <= 30
+GROUP BY
+  user_id, aisle_id
+"
+
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_depart_30" --flatten_results --replace "
+SELECT
+  a.user_id user_id,
+  a.department_id department_id,
+  count(1) cnt_user_depart,
+  count(distinct a.order_id) cnt_depart_order,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered
+FROM
+  [instacart.df_prior] as a
+LEFT OUTER JOIN
+  [instacart.cum_orders] as b
+ON
+  a.order_id = b.order_id
+WHERE
+  b.last_buy <= 30
+GROUP BY
+  user_id, department_id
+"
+###
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_item_14" --flatten_results --replace "
+SELECT
+  a.user_id as user_id,
+  a.product_id as product_id,
+  count(1) cnt_user_item,
+  count(distinct a.order_id) cnt_user_order,
+  avg(a.order_hour_of_day) avg_order_hour_of_day,
+  min(a.order_hour_of_day) min_order_hour_of_day,
+  max(a.order_hour_of_day) max_order_hour_of_day,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered,
+  AVG(a.days_since_prior_order) as avg_days_since_prior_order,
+  MAX(a.days_since_prior_order) as max_days_since_prior_order,
+  MIN(a.days_since_prior_order) as min_days_since_prior_order,
+FROM
+  [instacart.df_prior] as a
+LEFT OUTER JOIN
+  [instacart.cum_orders] as b
+ON
+  a.order_id = b.order_id
+WHERE
+  b.last_buy <= 14
+GROUP BY
+  user_id, product_id
+"
+
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_aisle_14" --flatten_results --replace "
+SELECT
+  a.user_id as user_id,
+  a.aisle_id as aisle_id,
+  count(1) cnt_user_aisle,
+  count(distinct a.order_id) cnt_aisle_order,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered
+FROM
+  [instacart.df_prior] as a
+LEFT OUTER JOIN
+  [instacart.cum_orders] as b
+ON
+  a.order_id = b.order_id
+WHERE
+  b.last_buy <= 14
+GROUP BY
+  user_id, aisle_id
+"
+
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_depart_14" --flatten_results --replace "
+SELECT
+  a.user_id user_id,
+  a.department_id department_id,
+  count(1) cnt_user_depart,
+  count(distinct a.order_id) cnt_depart_order,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered
+FROM
+  [instacart.df_prior] as a
+LEFT OUTER JOIN
+  [instacart.cum_orders] as b
+ON
+  a.order_id = b.order_id
+WHERE
+  b.last_buy <= 14
+GROUP BY
+  user_id, department_id
+"
+
+
+
+###
 bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user_item" --flatten_results --replace "
 SELECT
   user_id,
@@ -249,9 +416,10 @@ GROUP BY
 "
 
 
+
 bq query --max_rows 1  --maximum_billing_tier 3 --allow_large_results --destination_table "instacart.dmt_train_only_rebuy" --flatten_results --replace "
 SELECT
-  CASE WHEN tr.order_number is not null THEN 1 ELSE 0 END as target,
+  CASE WHEN tr.reordered is not null THEN tr.reordered ELSE 0 END as target,
   o.user_id,
   p.aisle_id,
   p.department_id,
@@ -265,17 +433,17 @@ SELECT
   l.*,
   u.*,
   i.*,
-  u2.*,
-  i2.*,
-  u3.*,
-  i3.*,
-  u4.*,
-  i4.*,
-  ui.*,
   la.*,
   ld.*,
+  ui.*,
   ua.*,
-  ud.*
+  ud.*,
+  ui14.*,
+  ua14.*,
+  ud14.*,
+  ui3.*,
+  ua3.*,
+  ud3.*
 FROM
   [instacart.only_rebuy_train] as o
 LEFT OUTER JOIN
@@ -291,34 +459,6 @@ LEFT OUTER JOIN
 ON
   i.i1_product_id = o.product_id
 LEFT OUTER JOIN
-  [instacart.dmt_user2_30] as u2
-ON
-  u2.u2_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_30] as i2
-ON
-  i2.i2_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_14] as u3
-ON
-  u3.u2_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_14] as i3
-ON
-  i3.i2_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_7] as u4
-ON
-  u4.u2_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_7] as i4
-ON
-  i4.i2_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_user_item] as ui
-ON
-  ui.user_id = o.user_id AND ui.product_id = o.product_id
-LEFT OUTER JOIN
   [instacart.products] as p
 ON
   o.product_id = p.product_id
@@ -331,6 +471,10 @@ LEFT OUTER JOIN
 ON
   ld.user_id = o.user_id AND ld.department_id = p.department_id
 LEFT OUTER JOIN
+  [instacart.dmt_user_item] as ui
+ON
+  ui.user_id = o.user_id AND ui.product_id = o.product_id
+LEFT OUTER JOIN
   [instacart.dmt_user_aisle] as ua
 ON
   ua.user_id = o.user_id AND ua.aisle_id = p.aisle_id
@@ -338,6 +482,30 @@ LEFT OUTER JOIN
   [instacart.dmt_user_depart] as ud
 ON
   ud.user_id = o.user_id AND ud.department_id = p.department_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_item_14] as ui14
+ON
+  ui14.user_id = o.user_id AND ui14.product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_aisle_14] as ua14
+ON
+  ua14.user_id = o.user_id AND ua14.aisle_id = p.aisle_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_depart_14] as ud14
+ON
+  ud14.user_id = o.user_id AND ud14.department_id = p.department_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_item_30] as ui3
+ON
+  ui3.user_id = o.user_id AND ui3.product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_aisle_30] as ua3
+ON
+  ua3.user_id = o.user_id AND ua3.aisle_id = p.aisle_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_depart_30] as ud3
+ON
+  ud3.user_id = o.user_id AND ud3.department_id = p.department_id
 LEFT OUTER JOIN
   [instacart.df_train] as tr
 ON
@@ -360,17 +528,17 @@ SELECT
   l.*,
   u.*,
   i.*,
-  u2.*,
-  i2.*,
-  u3.*,
-  i3.*,
-  u4.*,
-  i4.*,
-  ui.*,
   la.*,
   ld.*,
+  ui.*,
   ua.*,
-  ud.*
+  ud.*,
+  ui14.*,
+  ua14.*,
+  ud14.*,
+  ui3.*,
+  ua3.*,
+  ud3.*
 FROM
   [instacart.only_rebuy_test] as o
 LEFT OUTER JOIN
@@ -385,30 +553,6 @@ LEFT OUTER JOIN
   [instacart.dmt_item] as i
 ON
   i.i1_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_30] as u2
-ON
-  u2.u2_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_30] as i2
-ON
-  i2.i2_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_14] as u3
-ON
-  u3.u2_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_14] as i3
-ON
-  i3.i2_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_7] as u4
-ON
-  u4.u2_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_7] as i4
-ON
-  i4.i2_product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.dmt_user_item] as ui
 ON
@@ -433,13 +577,37 @@ LEFT OUTER JOIN
   [instacart.dmt_user_depart] as ud
 ON
   ud.user_id = o.user_id AND ud.department_id = p.department_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_item_14] as ui14
+ON
+  ui14.user_id = o.user_id AND ui14.product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_aisle_14] as ua14
+ON
+  ua14.user_id = o.user_id AND ua14.aisle_id = p.aisle_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_depart_14] as ud14
+ON
+  ud14.user_id = o.user_id AND ud14.department_id = p.department_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_item_30] as ui3
+ON
+  ui3.user_id = o.user_id AND ui3.product_id = o.product_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_aisle_30] as ua3
+ON
+  ua3.user_id = o.user_id AND ua3.aisle_id = p.aisle_id
+LEFT OUTER JOIN
+  [instacart.dmt_user_depart_30] as ud3
+ON
+  ud3.user_id = o.user_id AND ud3.department_id = p.department_id
 "
 
-gsutil -m rm -r gs://kaggle_quora/data/
+gsutil -m rm -r gs://kaggle-instacart-takami/data/
 
-bq extract --compression GZIP instacart.dmt_train_only_rebuy gs://kaggle_quora/data/dmt_train_only_rebuy/data*.csv.gz
-bq extract --compression GZIP instacart.dmt_test_only_rebuy gs://kaggle_quora/data/dmt_test_only_rebuy/data*.csv.gz
+bq extract --compression GZIP instacart.dmt_train_only_rebuy gs://kaggle-instacart-takami/data/dmt_train_only_rebuy/data*.csv.gz
+bq extract --compression GZIP instacart.dmt_test_only_rebuy gs://kaggle-instacart-takami/data/dmt_test_only_rebuy/data*.csv.gz
 
 rm -rf ../data/
-gsutil -m cp -r gs://kaggle_quora/data/ ../
+gsutil -m cp -r gs://kaggle-instacart-takami/data/ ../
 

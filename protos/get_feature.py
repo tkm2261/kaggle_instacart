@@ -24,6 +24,7 @@ THRESH = 0.189
 list_idx = None
 
 
+from features_drop import DROP_FEATURE
 
 if __name__ == '__main__':
 
@@ -39,24 +40,35 @@ if __name__ == '__main__':
 
     logger.info('load start')
 
-    with open('model.pkl', 'rb') as f:
+    with open('0714_10000loop/model.pkl', 'rb') as f:
         clf = pickle.load(f)
+
+    print(clf.get_params())
+
     try:
         aaa = clf.feature_importances_
     except:
         aaa = clf.feature_importance()
-        
+
     imp = pd.DataFrame(aaa, columns=['imp'])
+    df = load_test_data()
+    col = df.columns.values
+    imp['col'] = col
+    imp = imp.sort_values('imp', ascending=False)
     n_features = imp.shape[0]
-    imp_use = imp['imp'] == 0 #.sort_values('imp', ascending=False)
-    drop_col = load_test_data().columns.values#
+    imp_use = imp[imp['imp'] > 0]['col'].values  # .sort_values('imp', ascending=False)
+
+    """
+    usecols = sorted(list(set(df.columns.values.tolist()) & set(DROP_FEATURE)))
+    
+    df.drop(usecols, axis=1, inplace=True)
+    drop_col = df.columns.values#
     print(drop_col)
     drop_col = drop_col[imp_use]
     
-    logger.info('imp use {} {}'.format(imp_use.shape, n_features, drop_col))
     with open('features_tmp.py', 'w') as f:
         f.write('DROP_FEATURE = ["' + '", "'.join(map(str, drop_col)) + '"]\n')
-
+    """
+    logger.info('imp use {} {}'.format(imp_use.shape, n_features))
     with open('features_use.py', 'w') as f:
-        f.write('FEATURE = ["' + '", "'.join(map(str, drop_col)) + '"]\n')
-
+        f.write('FEATURE = ["' + '", "'.join(map(str, imp_use)) + '"]\n')
