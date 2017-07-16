@@ -40,6 +40,22 @@ def f1_metric(label, pred):
     return 'f1', sc, True
 
 
+def get_stack(folder, is_train=True):
+    col = 'hogehoge'
+    if is_train:
+        with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+            df = pd.read_csv(folder + 'train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+            df[col] = pickle.load(f).astype(np.float32)
+            df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    else:
+        with open(folder + 'test_tmp.pkl', 'rb') as f:
+            df = pd.read_csv(folder + 'test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+            df[col] = pickle.load(f).astype(np.float32)[:, 1]
+            df1 = pd.read_csv('test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+
+    return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])[col].values
+
+
 if __name__ == '__main__':
 
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
@@ -56,8 +72,8 @@ if __name__ == '__main__':
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
     all_params = {'max_depth': [5],
-                  'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
-                  'n_estimators': [20000],
+                  'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
+                  'n_estimators': [10000],
                   'min_child_weight': [10],
                   'colsample_bytree': [0.7],
                   #'boosting_type': ['rf'],  # ['gbdt'],
@@ -70,7 +86,7 @@ if __name__ == '__main__':
                   #'max_bin': [127],
                   'min_split_gain': [0],
                   'silent': [False],
-                  'seed': [6436]
+                  'seed': [114514]
                   }
 
     logger.info('load start')
@@ -90,17 +106,13 @@ if __name__ == '__main__':
     df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
     sample_weight = 1 / df['weight'].values
     sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
-
-    ###
     x_train, y_train, cv = load_train_data()
     #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     #x_train.drop(usecols, axis=1, inplace=True)
     #df.target = y_train
     #x_train = x_train[FEATURE]
-    """
-    with open('0713_1691/train_cv_tmp.pkl', 'rb') as f:
-        x_train['first'] = pickle.load(f).astype(np.float32) 
-    """
+    #x_train['0714_10000loop'] = get_stack('0714_10000loop/', is_train=True)
+    #x_train['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=True)
 
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
@@ -141,10 +153,10 @@ if __name__ == '__main__':
             clf.fit(trn_x, trn_y,
                     # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
-                    eval_set=[(val_x, val_y)],
+                    #eval_set=[(val_x, val_y)],
                     verbose=True,
-                    eval_metric=f1_metric,
-                    early_stopping_rounds=150
+                    # eval_metric=f1_metric,
+                    # early_stopping_rounds=150
                     )
             pred = clf.predict_proba(val_x)[:, 1]
             all_pred[test] = pred
@@ -219,13 +231,17 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
+
+    #x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
+    #x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)
+
     #x_test.drop(usecols, axis=1, inplace=True)
-    x_test = x_test[FEATURE]
+    #x_test = x_test[FEATURE]
     x_test = x_test.fillna(fillna_mean).values
 
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
-    p_test = clf.predict_proba(x_test)
+    p_test = clf.predict_proba(x_test, num_iteration=7000)
     with open('test_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)

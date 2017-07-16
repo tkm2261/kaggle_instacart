@@ -26,11 +26,6 @@ THRESH = 0.189
 
 list_idx = None
 
-
-def aaa(arg):
-    return f1_score(*arg)
-
-
 from utils import f1
 
 
@@ -38,6 +33,40 @@ def f1_metric(label, pred):
     res = [f1(label[i], pred[i]) for i in list_idx]
     sc = np.mean(res)
     return 'f1', sc, True
+
+
+def get_stack(folder, is_train=True):
+    col = 'hogehoge'
+    if is_train:
+        with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+            df = pd.read_csv(folder + 'train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+            df[col] = pickle.load(f).astype(np.float32)
+            df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    else:
+        with open(folder + 'test_tmp.pkl', 'rb') as f:
+            df = pd.read_csv(folder + 'test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+            df[col] = pickle.load(f).astype(np.float32)[:, 1]
+            df1 = pd.read_csv('test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+
+    return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])[col].values
+
+
+def aaa(folder):
+    with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+        pred = pickle.load(f)
+
+    df = pd.read_csv(folder + 'train_data_idx.csv')
+    df.drop('target', axis=1, inplace=True)
+    df_val = df  # .loc[val, :].copy()
+
+    df_val['pred'] = pred
+    return df_val
+
+
+def rrr():
+    df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
+    return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(0)
 
 
 if __name__ == '__main__':
@@ -52,7 +81,7 @@ if __name__ == '__main__':
 
     all_params = {'max_depth': [5],
                   'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
-                  'n_estimators': [20000],
+                  'n_estimators': [10000],
                   'min_child_weight': [10],
                   'colsample_bytree': [0.7],
                   #'boosting_type': ['rf'],  # ['gbdt'],
@@ -65,49 +94,43 @@ if __name__ == '__main__':
                   #'max_bin': [127],
                   'min_split_gain': [0],
                   'silent': [False],
-                  'seed': [6436]
+                  'seed': [114514]
                   }
 
     logger.info('load start')
 
     df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
-    """
-    df1 = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
-    tmp = df1['reordered'].values
-    df1['reordered'] = np.where(tmp == 0, 0.1, 1)
-    sample_weight = pd.merge(df, df1, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(1).values
 
-    """
-    weight_col = 'order_id'
-    order_idx = df.order_id.values
-    tmp = df.groupby(weight_col)[[weight_col]].count()
-    tmp.columns = ['weight']
-    df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
-    sample_weight = 1 / df['weight'].values
-    sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
-
-    ###
-    x_train, y_train, cv = load_train_data()
-    #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
-    #x_train.drop(usecols, axis=1, inplace=True)
-    #df.target = y_train
-
-    """
-    with open('0713_1691/train_cv_tmp.pkl', 'rb') as f:
-        x_train['first'] = pickle.load(f).astype(np.float32) 
-    """
-
-    fillna_mean = x_train.mean()
-    '''
-    x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
-    #x_train[np.isnan(x_train)] = -10
     gc.collect()
+
+    df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+    df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+    df_val2 = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+
+    y_train = rrr()
+    x_train = pd.DataFrame().sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+    x_train['pred1'] = df_val.pred.values
+    x_train['pred2'] = df_val1.pred.values
+    x_train['pred3'] = df_val2.pred.values
+
+    x_train = x_train.values
+    y_train = y_train.reordered.values
+
+    with open('user_split.pkl', 'rb') as f:
+        cv = pickle.load(f)
+
+    cv = []
+    user_ids = df_val['o_user_id']
+    for train, test in cv:
+        trn = user_ids.isin(train)
+        val = user_ids.isin(test)
+        cv.append((trn, val))
 
     logger.info('load end {}'.format(x_train.shape))
     #{'seed': 6436, 'n_estimators': 809, 'learning_rate': 0.1, 'silent': True, 'subsample': 0.9, 'reg_alpha': 1, 'max_depth': 5, 'colsample_bytree': 0.7, 'min_child_weight': 5, 'max_bin': 500, 'min_split_gain': 0}
     min_score = (100, 100, 100)
     min_params = None
-    #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
+    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
 
     for params in tqdm(list(ParameterGrid(all_params))):
@@ -125,20 +148,8 @@ if __name__ == '__main__':
             trn_y = y_train[train]
             val_y = y_train[test]
 
-            trn_w = sample_weight[train]
-            val_w = sample_weight[test]
-
             list_idx = df.loc[test].reset_index(drop=True).groupby('order_id').apply(lambda x: x.index.values).tolist()
-
-            clf = LGBMClassifier(**params)
-            clf.fit(trn_x, trn_y,
-                    # sample_weight=trn_w,
-                    # eval_sample_weight=[val_w],
-                    #eval_set=[(val_x, val_y)],
-                    verbose=True,
-                    # eval_metric=f1_metric,
-                    # early_stopping_rounds=150
-                    )
+            clf = LogisticRegression(random_state=0, fit_intercept=False)
             pred = clf.predict_proba(val_x)[:, 1]
             all_pred[test] = pred
 
@@ -149,24 +160,15 @@ if __name__ == '__main__':
             list_score.append(_score)
             list_score2.append(_score2)
             list_score3.append(_score3)
-            if clf.best_iteration != -1:
-                list_best_iter.append(clf.best_iteration)
-            else:
-                list_best_iter.append(params['n_estimators'])
 
-            with open('train_cv_pred_%s.pkl' % cnt, 'wb') as f:
-                pickle.dump(pred, f, -1)
-            with open('model_%s.pkl' % cnt, 'wb') as f:
-                pickle.dump(clf, f, -1)
             del trn_x
             del clf
             gc.collect()
             # break
-        with open('train_cv_tmp.pkl', 'wb') as f:
-            pickle.dump(all_pred, f, -1)
+        # with open('train_cv_tmp.pkl', 'wb') as f:
+        #    pickle.dump(all_pred, f, -1)
 
         logger.info('trees: {}'.format(list_best_iter))
-        params['n_estimators'] = np.mean(list_best_iter, dtype=int)
         score = (np.mean(list_score), np.min(list_score), np.max(list_score))
         score2 = (np.mean(list_score2), np.min(list_score2), np.max(list_score2))
         score3 = (np.mean(list_score3), np.min(list_score3), np.max(list_score3))
@@ -186,7 +188,7 @@ if __name__ == '__main__':
         logger.info('best_param: {}'.format(min_params))
 
     gc.collect()
-
+    """
     clf = LGBMClassifier(**min_params)
     clf.fit(x_train, y_train,
             verbose=True,
@@ -197,21 +199,33 @@ if __name__ == '__main__':
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
-    '''
+
     ###
-    with open('0714_10000loop/model.pkl', 'rb') as f:
+    with open('model.pkl', 'rb') as f:
         clf = pickle.load(f)
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
     n_features = imp.shape[0]
+    imp_use = imp[imp['imp'] > 0].sort_values('imp', ascending=False)
+    logger.info('imp use {} {}'.format(imp_use.shape, n_features))
+    with open('features_train.py', 'w') as f:
+        f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
+
+    with open('fillna_mean.pkl', 'rb') as f:
+        fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
-    #x_test.drop(usecols, axis=1, inplace=True)
 
+    # x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
+    # x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)
+
+    # x_test.drop(usecols, axis=1, inplace=True)
+    # x_test = x_test[FEATURE]
     x_test = x_test.fillna(fillna_mean).values
 
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
-    p_test = clf.predict_proba(x_test)
-    with open('0714_10000loop/test_tmp.pkl', 'wb') as f:
+    p_test = clf.predict_proba(x_test, num_iteration=7000)
+    with open('test_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)
+    """

@@ -143,22 +143,6 @@ def _uuu(args):
     mean = vals[0][2]
     std = vals[0][3]
 
-    if IS_COV:
-
-        n = preds.shape[0]
-        if map_user_order_num[user_id] >= THRESH_NUM:
-            cov_data = get_cov(user_id)
-            idx = [cov_data.map_item2idx[i] for i in items]
-            try:
-                tmp = cov_data.cov_matrix[idx, idx]
-            except:
-                tmp = np.array([[1]])
-            cov_matrix = np.zeros((n + 1, n + 1))
-            cov_matrix[:n, :n] += tmp
-            cov_matrix[n - 1, n - 1] = 1
-        else:
-            cov_matrix = np.eye(n + 1)
-
     none_prob = (1 - preds).prod()  # min(1 - map_reoder_rate[user_id], (1 - preds).prod())
     preds = np.r_[preds, [none_prob]]
     items.append('None')
@@ -167,29 +151,7 @@ def _uuu(args):
     preds = preds[idx]
 
     items = [items[i] for i in idx]  # items[idx]
-    none_idx = idx[-1]
-    # sum_pred = preds.sum()
-    """
-    if IS_COV:
-        scenario = get_y_true2(preds, none_idx, cov_matrix)
-    else:
-        scenario = get_y_true(preds, none_idx)
-    num_y_true = scenario.sum(axis=1)
-    scores = []
-    tp = np.zeros(scenario.shape[0])
 
-    for i in range(len(preds)):
-        num_y_pred = i + 1
-        # tp = scenario[:, :i + 1].sum(axis=1)
-        tp += scenario[:, i]
-        precision = tp / num_y_pred
-        recall = tp / num_y_true
-        f1 = (2 * precision * recall) / (precision + recall)
-        f1[np.isnan(f1)] = 0
-        f1 = f1.mean()
-        scores.append((f1, i))
-    """
-    """
     scores = []
     tp = 0
     ans = map_result.get(order_id, ['None'])
@@ -197,7 +159,7 @@ def _uuu(args):
         f1 = multilabel_fscore(ans, items[:i + 1])
         scores.append((f1, i))
     _, best_idx = max(scores, key=lambda x: x[0])
-    """
+
     scores = []
     num_y_true = preds.sum()
     tp = 0
