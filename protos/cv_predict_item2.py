@@ -69,7 +69,12 @@ map_result = make_result()
 # df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 #df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+
+df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val2 = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+
 # df_val = aaa('./0706_tuned/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val2 = aaa('./0708_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
@@ -78,7 +83,7 @@ df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product
 # df_val.pred += df_val1.pred.values
 # df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-#df_val.pred = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values]), axis=0)
+df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values, df_val2.pred.values]), axis=0)
 # df_val.pred = np.max(np.vstack([df_val.pred.values, df_val2.pred.values]), axis=0)
 
 
@@ -117,47 +122,6 @@ def add_none(num, sum_pred, safe):
 
 np.random.seed(0)
 NUM = 10000
-
-
-def get_y_true(preds, none_idx):
-    n = preds.shape[0]
-    y_true = np.zeros(n, dtype=np.bool)
-    y_true = np.random.random((NUM, n)) < preds
-
-    y_true_sum = y_true.sum(axis=1)
-    y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
-
-    return y_true
-
-
-from scipy.stats import norm
-
-
-def get_cov(user_id):
-    with open('../recommend/cov_data/%s.pkl' % user_id, 'rb') as f:
-        return pickle.load(f)
-
-
-ALPHA = 0.3  # float(sys.argv[1])
-THRESH_NUM = int(sys.argv[1])
-logging.info('ALPHA: %s' % ALPHA)
-logging.info('THRESH_NUM: %s' % THRESH_NUM)
-
-
-def get_y_true2(preds, none_idx, cov_matrix):
-    n = preds.shape[0]
-
-    cov_matrix = ALPHA * cov_matrix + (1 - ALPHA) * np.eye(n)
-
-    tmp = np.random.multivariate_normal(np.zeros(n), cov_matrix, size=NUM)
-    preds = np.array([norm.ppf(q=p, loc=0, scale=np.sqrt(cov_matrix[i, i])) for i, p in enumerate(preds)])
-
-    y_true = preds > tmp
-    y_true_sum = y_true.sum(axis=1)
-    y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
-    return y_true
-
-
 IS_COV = False
 with open('map_user_order_num.pkl', 'rb') as f:
     map_user_order_num = pickle.load(f)
