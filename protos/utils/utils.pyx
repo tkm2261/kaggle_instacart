@@ -8,12 +8,12 @@ def f1(np.ndarray[long, ndim=1] _label, np.ndarray[double, ndim=1] _preds):
     cdef np.ndarray[long, ndim=1] label = np.zeros(n, dtype=np.int)
     cdef np.ndarray[double, ndim=1] preds = np.zeros(n, dtype=np.float)
 
-    label[:n - 1] = _label
-    preds[:n - 1] = _preds
+    label[:n-1] = _label
+    preds[:n-1] = _preds
 
-    label[n-1] = (1 - _preds).prod()
+    preds[n - 1] = (1 - _preds).prod()
     if _label.sum() == 0:
-        preds[n-1] = 1
+        label[n - 1] = 1
         
     cdef np.ndarray[long, ndim=1] idx = np.argsort(preds)[::-1]
     label = label[idx]
