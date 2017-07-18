@@ -35,7 +35,7 @@ from utils import f1
 
 
 def f1_metric(label, pred):
-    res = [f1(label[i], pred[i]) for i in list_idx]
+    res = [f1(label.take(i), pred.take(i)) for i in list_idx]
     sc = np.mean(res)
     return 'f1', sc, True
 
@@ -54,6 +54,11 @@ def get_stack(folder, is_train=True):
             df1 = pd.read_csv('test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
 
     return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])[col].values
+
+
+def rrr():
+    df = pd.read_csv('thresh_target.csv', header=None, names=['order_id', 'user_id', 'product_id', 'reordered'])
+    return df
 
 
 if __name__ == '__main__':
@@ -85,7 +90,7 @@ if __name__ == '__main__':
                   #'reg_lambda': [1],
                   #'max_bin': [127],
                   'min_split_gain': [0],
-                  'silent': [False],
+                  'silent': [True],
                   'seed': [114514]
                   }
 
@@ -107,6 +112,7 @@ if __name__ == '__main__':
     sample_weight = 1 / df['weight'].values
     sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
     x_train, y_train, cv = load_train_data()
+
     #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     #x_train.drop(usecols, axis=1, inplace=True)
     #df.target = y_train
@@ -142,6 +148,7 @@ if __name__ == '__main__':
             trn_x = x_train[train]
             val_x = x_train[test]
             trn_y = y_train[train]
+
             val_y = y_train[test]
 
             trn_w = sample_weight[train]
@@ -153,9 +160,9 @@ if __name__ == '__main__':
             clf.fit(trn_x, trn_y,
                     # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
-                    #eval_set=[(val_x, val_y)],
+                    eval_set=[(val_x, val_y)],
                     verbose=True,
-                    # eval_metric=f1_metric,
+                    eval_metric=f1_metric,
                     # early_stopping_rounds=150
                     )
             pred = clf.predict_proba(val_x)[:, 1]

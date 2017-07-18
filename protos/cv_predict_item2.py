@@ -71,9 +71,9 @@ map_result = make_result()
 #df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val2 = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
 # df_val = aaa('./0706_tuned/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
@@ -83,7 +83,7 @@ df_val2 = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'pr
 # df_val.pred += df_val1.pred.values
 # df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values, df_val2.pred.values]), axis=0)
+#df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values, df_val2.pred.values]), axis=0)
 # df_val.pred = np.max(np.vstack([df_val.pred.values, df_val2.pred.values]), axis=0)
 
 
