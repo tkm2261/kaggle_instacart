@@ -90,7 +90,7 @@ if __name__ == '__main__':
                   #'reg_lambda': [1],
                   #'max_bin': [127],
                   'min_split_gain': [0],
-                  'silent': [True],
+                  'silent': [False],
                   'seed': [114514]
                   }
 
@@ -109,12 +109,20 @@ if __name__ == '__main__':
     tmp = df.groupby(weight_col)[[weight_col]].count()
     tmp.columns = ['weight']
     df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
-    sample_weight = 1 / df['weight'].values
-    sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
+    sample_weight = 1 / np.log(df['weight'].values)
+    #sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
     x_train, y_train, cv = load_train_data()
 
+    x_train = x_train.merge(pd.read_csv('product_last.csv'), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+    x_train = x_train.merge(pd.read_csv('product_first.csv'), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+
     #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
-    #x_train.drop(usecols, axis=1, inplace=True)
+    x_train.drop([col for col in x_train.columns.values
+                  if 'order_id' in col], axis=1, inplace=True)
+    usecols = x_train.columns.values
+    gc.collect()
     #df.target = y_train
     #x_train = x_train[FEATURE]
     #x_train['0714_10000loop'] = get_stack('0714_10000loop/', is_train=True)
@@ -160,9 +168,9 @@ if __name__ == '__main__':
             clf.fit(trn_x, trn_y,
                     # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
-                    eval_set=[(val_x, val_y)],
+                    #eval_set=[(val_x, val_y)],
                     verbose=True,
-                    eval_metric=f1_metric,
+                    # eval_metric=f1_metric,
                     # early_stopping_rounds=150
                     )
             pred = clf.predict_proba(val_x)[:, 1]
@@ -238,6 +246,10 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
+    x_test = x_test.merge(pd.read_csv('product_last.csv'), how='left',
+                          left_on='o_product_id', right_on='product_id', copy=False)
+    x_test = x_test.merge(pd.read_csv('product_first.csv'), how='left',
+                          left_on='o_product_id', right_on='product_id', copy=False)
 
     #x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
     #x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)
@@ -245,7 +257,7 @@ if __name__ == '__main__':
     #x_test.drop(usecols, axis=1, inplace=True)
     #x_test = x_test[FEATURE]
     x_test = x_test.fillna(fillna_mean).values
-
+    x_test = x_test[usecols]
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
