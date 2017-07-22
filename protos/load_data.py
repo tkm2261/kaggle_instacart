@@ -74,7 +74,7 @@ def read_csv(filename):
 
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
-               col not in set(['o_order_id', 'o_user_id', 'o_product_id'])]
+               col not in set(['o_order_id', 'o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
     logger.debug('id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
 
