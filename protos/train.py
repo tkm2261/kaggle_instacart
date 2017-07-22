@@ -113,9 +113,14 @@ if __name__ == '__main__':
     #sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
     x_train, y_train, cv = load_train_data()
 
-    x_train = x_train.merge(pd.read_csv('product_last.csv'), how='left',
+    x_train = x_train.merge(pd.read_csv('product_last.csv').astype(np.float32), how='left',
                             left_on='o_product_id', right_on='product_id', copy=False)
-    x_train = x_train.merge(pd.read_csv('product_first.csv'), how='left',
+    x_train = x_train.merge(pd.read_csv('product_first.csv').astype(np.float32), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+
+    x_train = x_train.merge(pd.read_csv('product_all.csv').astype(np.float32), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+    x_train = x_train.merge(pd.read_csv('word_preds.csv').astype(np.float32), how='left',
                             left_on='o_product_id', right_on='product_id', copy=False)
 
     #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
@@ -249,6 +254,10 @@ if __name__ == '__main__':
     x_test = x_test.merge(pd.read_csv('product_last.csv'), how='left',
                           left_on='o_product_id', right_on='product_id', copy=False)
     x_test = x_test.merge(pd.read_csv('product_first.csv'), how='left',
+                          left_on='o_product_id', right_on='product_id', copy=False)
+    x_test = x_test.merge(pd.read_csv('product_all.csv'), how='left',
+                          left_on='o_product_id', right_on='product_id', copy=False)
+    x_test = x_test.merge(pd.read_csv('word_preds.csv'), how='left',
                           left_on='o_product_id', right_on='product_id', copy=False)
 
     #x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
