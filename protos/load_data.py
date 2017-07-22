@@ -51,9 +51,7 @@ def read_csv(filename):
     normarize('u3_order_hour_of_day')
     gc.collect()
 
-    drop('u.14')
-
-    cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
+    #cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
     df['since_last_order'] = (df['o_cum_days'] - df['l_cum_days']).astype(np.float32)
     df['since_last_aisle'] = (df['o_cum_days'] - df['la_cum_days']).astype(np.float32)
     df['since_last_depart'] = (df['o_cum_days'] - df['ld_cum_days']).astype(np.float32)
@@ -74,7 +72,11 @@ def read_csv(filename):
     df['since_last_visit_aisle2'] = (df['o_order_number'] - df['la2_max_order_number']).astype(np.float32)
     df['since_last_visit_depart2'] = (df['o_order_number'] - df['ld2_max_order_number']).astype(np.float32)
 
-    #df.drop(cum_cols, axis=1, inplace=True)
+    id_cols = [col for col in df.columns.values
+               if re.search('_id$', col) is not None and
+               col not in set(['o_order_id', 'o_user_id', 'o_product_id'])]
+    logger.debug('id_cols {}'.format(id_cols))
+    df.drop(id_cols, axis=1, inplace=True)
 
     gc.collect()
 
