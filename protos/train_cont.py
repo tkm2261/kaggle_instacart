@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
             clf = lgb.train(params,
                             train_data,
-                            1000,
+                            10000,
                             init_model=booster)
             pred = clf.predict(val_x)
             all_pred[test] = pred

@@ -73,8 +73,8 @@ if __name__ == '__main__':
     df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
     ###
     x_train, y_train, cv = load_train_data()
-    x_train['0714_10000loop'] = get_stack('0714_10000loop/', is_train=True)
-    x_train['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=True)
+    # x_train['0714_10000loop']= get_stack('0714_10000loop/', is_train=True)
+    # x_train['0715_2nd_order']= get_stack('0715_2nd_order/', is_train=True)
 
     fillna_mean = x_train.mean()
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
@@ -85,25 +85,25 @@ if __name__ == '__main__':
 
     min_score = (100, 100, 100)
     min_params = None
-    #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
+    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
     list_idxs = []
     list_model = []
     list_data = []
-    for t, (train, test) in enumerate(cv):
+    for t, (train, test) in enumerate(cv[: 1]):
         with open('model_%s.pkl' % t, 'rb') as f:
             list_model += [pickle.load(f)]
         list_idxs.append(df.loc[test].reset_index(drop=True).groupby(
             'order_id').apply(lambda x: x.index.values).tolist())
-        #list_data.append((trn_x, val_x, trn_y, val_y))
+        # list_data.append((trn_x, val_x, trn_y, val_y))
 
     gc.collect()
 
-    for i in range(7000, 11001, 1000)[:1]:
+    for i in range(3000, 11001, 1000):
         list_score = []
         all_pred = np.zeros(y_train.shape[0])
         # for t, (trn_x, val_x, trn_y, val_y) in enumerate(list_data):
-        for t, (train, test) in enumerate(cv):
+        for t, (train, test) in enumerate(cv[:1]):
             trn_x = x_train[train]
             val_x = x_train[test]
             trn_y = y_train[train]
@@ -112,11 +112,10 @@ if __name__ == '__main__':
             list_idx = list_idxs[t]
             clf = list_model[t]
             pred = clf.predict_proba(val_x, num_iteration=i)[:, 1]
-            pred = clf.predict_proba(val_x)[:, 1]
             _, _score, _ = f1_metric(val_y, pred, list_idx)
             list_score.append(_score)
 
-        with open('train_cv_tmp.pkl', 'wb') as f:
-            pickle.dump(all_pred, f, -1)
+        # with open('train_cv_tmp.pkl', 'wb') as f:
+        #    pickle.dump(all_pred, f, -1)
 
         logger.info('{} {} {}'.format(i, list_score, np.mean(list_score)))
