@@ -31,19 +31,21 @@ def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1
+from utils import f1, f1_group
 
 
 def f1_metric_xgb(pred, dtrain):
     label = dtrain.get_label().astype(np.int)
     pred = pred.astype(np.float64)
-    res = [f1(label.take(i), pred.take(i)) for i in list_idx]
+    #res = [f1(label.take(i), pred.take(i)) for i in list_idx]
+    res = f1_group(label, pred, list_idx)
     sc = np.mean(res)
     return 'f1', - sc
 
 
 def f1_metric(label, pred):
-    res = [f1(label.take(i), pred.take(i)) for i in list_idx]
+    #res = [f1(label.take(i), pred.take(i)) for i in list_idx]
+    res = f1_group(label, pred, list_idx)
     sc = np.mean(res)
     return 'f1', sc, True
 
@@ -79,14 +81,14 @@ if __name__ == '__main__':
     handler.setFormatter(log_fmt)
     logger.addHandler(handler)
 
-    handler = FileHandler('train2.py.log', 'a')
+    handler = FileHandler('train_xgb.py.log', 'a')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
 
     all_params = {'max_depth': [5],
-                  'n_estimators': [1000],
+                  'n_estimators': [3000],
                   'min_child_weight': [10],
                   'subsample': [0.9],
                   'colsample_bytree': [0.8],
@@ -121,9 +123,6 @@ if __name__ == '__main__':
 
     x_train = x_train.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
                             on='o_user_id', copy=True)
-
-    x_train = x_train.merge(pd.read_csv('../input/diff_user_item_reordered_30.csv.gz').astype(np.float32).rename(columns={'user_id': 'o_user_id', 'product_id': 'o_product_id'}), how='left',
-                            on=['o_user_id', 'o_product_id'], copy=True)
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -174,7 +173,10 @@ if __name__ == '__main__':
             trn_w = sample_weight[train]
             val_w = sample_weight[test]
 
-            list_idx = df.loc[test].reset_index(drop=True).groupby('order_id').apply(lambda x: x.index.values).tolist()
+            #list_idx = df.loc[test].reset_index(drop=True).groupby('order_id').apply(lambda x: x.index.values).tolist()
+            list_idx = df.loc[test].reset_index(drop=True).groupby(
+                'order_id').apply(lambda x: x.index.values.shape[0]).tolist()
+            list_idx = np.array(list_idx, dtype=np.int)
 
             d_train = xgb.DMatrix(trn_x, label=trn_y)
             d_valid = xgb.DMatrix(val_x, label=val_y)
@@ -185,7 +187,7 @@ if __name__ == '__main__':
                             d_train,
                             params['n_estimators'],
                             watchlist,
-                            # feval=f1_metric,
+                            feval=f1_metric,
                             verbose_eval=1)
 
             pred = clf.predict(d_valid)
@@ -203,18 +205,20 @@ if __name__ == '__main__':
                 list_best_iter.append(clf.best_iteration)
             else:
                 list_best_iter.append(params['n_estimators'])
-
+            """
             with open('train_cv_pred_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(pred, f, -1)
             with open('model_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(clf, f, -1)
+            """
             del trn_x
             del clf
             gc.collect()
             break
+        """
         with open('train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
-
+        """
         logger.info('trees: {}'.format(list_best_iter))
         params['n_estimators'] = np.mean(list_best_iter, dtype=int)
         score = (np.mean(list_score), np.min(list_score), np.max(list_score))

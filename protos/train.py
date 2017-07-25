@@ -25,18 +25,21 @@ now_order_ids = None
 THRESH = 0.189
 
 list_idx = None
+cnt_a = 0
 
 
 def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1
+from utils import f1, f1_group
 
 
 def f1_metric(label, pred):
-    res = [f1(label.take(i), pred.take(i)) for i in list_idx]
+    #res = [f1(label.take(i), pred.take(i)) for i in list_idx]
+    res = f1_group(label, pred, list_idx)
     sc = np.mean(res)
+    logger.debug('f1: %s' % (sc))
     return 'f1', sc, True
 
 
@@ -100,14 +103,17 @@ if __name__ == '__main__':
     all_params = {'min_child_weight': [10],
                   'subsample': [0.9],
                   'seed': [114514],
-                  'n_estimators': [1000],
-                  'colsample_bytree': [0.7],
+                  'n_estimators': [1000, 2000, 3000, 4000, 5000],
+                  'colsample_bytree': [0.9],
                   'silent': [False],
                   'learning_rate': [0.1],
                   'max_depth': [5],
-                  'min_data_in_bin': [8],
+                  'min_data_in_bin': [3],
                   'min_split_gain': [0],
                   'reg_alpha': [1],
+                  'max_bin': [511],
+                  #'objective': ['xentropy'],
+                  #'metric_freq': [100]
                   }
     logger.info('load start')
     x_train, y_train, cv = load_train_data()
@@ -135,9 +141,6 @@ if __name__ == '__main__':
     x_train = x_train.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
                             on='o_user_id', copy=True)
 
-    x_train = x_train.merge(pd.read_csv('../input/diff_user_item_reordered_30.csv.gz').astype(np.float32).rename(columns={'user_id': 'o_user_id', 'product_id': 'o_product_id'}), how='left',
-                            on=['o_user_id', 'o_product_id'], copy=True)
-
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
@@ -153,14 +156,12 @@ if __name__ == '__main__':
         pickle.dump(usecols, f, -1)
     gc.collect()
 
-    with open('tmp.pkl', 'wb') as f:
-        pickle.dump((x_train, y_train, cv), f, -1)
-
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
 
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
+
     logger.info('data end')
     # x_train[np.isnan(x_train)] = -10
     gc.collect()
@@ -191,7 +192,9 @@ if __name__ == '__main__':
             trn_w = sample_weight[train]
             val_w = sample_weight[test]
 
-            list_idx = df.loc[test].reset_index(drop=True).groupby('order_id').apply(lambda x: x.index.values).tolist()
+            list_idx = df.loc[test].reset_index(drop=True).groupby(
+                'order_id').apply(lambda x: x.index.values.shape[0]).tolist()
+            list_idx = np.array(list_idx, dtype=np.int)
 
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
@@ -290,6 +293,9 @@ if __name__ == '__main__':
     logger.info('product_wordpred')
     x_test = x_test.merge(pd.read_csv('word_preds.csv').astype(np.float32), how='left',
                           left_on='o_product_id', right_on='product_id', copy=False)
+    x_test = x_test.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
+                          on='o_user_id', copy=True)
+
     id_cols = [col for col in x_test.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]

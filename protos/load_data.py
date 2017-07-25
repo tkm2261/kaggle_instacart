@@ -161,12 +161,15 @@ def load_train_data():
     df = pd.merge(df, df2, how='left', left_on=['o_order_id', 'o_user_id', 'o_product_id'],
                   right_on=['order_id', 'user_id', 'product_id'], copy=False)
 
+    df = df.sort_values(['o_order_id', 'o_user_id', 'o_product_id']).reset_index(drop=True)
+
     _df = df[['o_order_id', 'o_user_id', 'o_product_id', 'target']]
     _df.columns = ['order_id', 'user_id', 'product_id', 'target']
     _df.to_csv('train_data_idx.csv', index=False)
     del _df
     del df2
     gc.collect()
+
     with open('user_split.pkl', 'rb') as f:
         cv = pickle.load(f)
 
@@ -184,8 +187,8 @@ def load_train_data():
 
     logger.info('dump data')
     target = rrr()
-    # with open(TRAIN_DATA_PATH, 'wb') as f:
-    #    pickle.dump((df, target, list_cv), f, -1)
+    with open(TRAIN_DATA_PATH, 'wb') as f:
+        pickle.dump((df, target, list_cv), f, -1)
 
     logger.info('exit')
     return df, target, list_cv
@@ -221,7 +224,7 @@ def load_test_data():
     logger.info('load base merge')
     df = pd.merge(df, df2, how='left', left_on=['o_order_id', 'o_user_id', 'o_product_id'],
                   right_on=['order_id', 'user_id', 'product_id'], copy=False)
-
+    df.sort_values(['o_order_id', 'o_user_id', 'o_product_id'], inplace=True)
     _df = df[['o_order_id', 'o_user_id', 'o_product_id']]
     _df.columns = ['order_id', 'user_id', 'product_id']
     _df.to_csv('test_data_idx.csv', index=False)
