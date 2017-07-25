@@ -16,7 +16,8 @@ SELECT
   MAX(order_hour_of_day) as max_order_hour_of_day,
   MIN(order_hour_of_day) as min_order_hour_of_day,
   AVG(order_hour_of_day) as avg_order_hour_of_day,
-  AVG(reordered) as avg_reordered
+  AVG(reordered) as avg_reordered,
+  SUM(reordered) as sum_reordered
 FROM
   [instacart.df_prior]
 GROUP BY
