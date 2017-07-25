@@ -28,7 +28,7 @@ LEFT OUTER JOIN
 ON
   a.order_id = b.order_id
 WHERE
-  b.last_buy <= 7
+  b.last_buy <= 30
 "
 
 bq query --max_rows 1  --allow_large_results --destination_table "instacart.user_fund" --flatten_results --replace "
@@ -44,7 +44,6 @@ SELECT
   AVG(days_since_prior_order) as avg_days_since_prior_order,
   MAX(days_since_prior_order) as max_days_since_prior_order,
   MIN(days_since_prior_order) as min_days_since_prior_order,
-  AVG(days_since_prior_order) as avg_days_since_prior_order,
   MAX(order_hour_of_day) as max_order_hour_of_day,
   MIN(order_hour_of_day) as min_order_hour_of_day,
   AVG(order_hour_of_day) as avg_order_hour_of_day,
@@ -157,7 +156,7 @@ GROUP BY
   user_id
 "
 
-bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user2_7" --flatten_results --replace "
+bq query --max_rows 1  --allow_large_results --destination_table "instacart.dmt_user2_30" --flatten_results --replace "
 SELECT
   *
 FROM
