@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     logger.info('load start')
 
-    with open('0714_10000loop/model.pkl', 'rb') as f:
+    with open('model.pkl', 'rb') as f:
         clf = pickle.load(f)
 
     print(clf.get_params())
@@ -51,12 +51,26 @@ if __name__ == '__main__':
         aaa = clf.feature_importance()
 
     imp = pd.DataFrame(aaa, columns=['imp'])
-    df = load_test_data()
-    col = df.columns.values
+    x_train, y_train, cv = load_train_data()
+
+    x_train = x_train.merge(pd.read_csv('product_last.csv').astype(np.float32), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+    x_train = x_train.merge(pd.read_csv('product_first.csv').astype(np.float32), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+
+    x_train = x_train.merge(pd.read_csv('product_all.csv').astype(np.float32), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+    x_train = x_train.merge(pd.read_csv('word_preds.csv').astype(np.float32), how='left',
+                            left_on='o_product_id', right_on='product_id', copy=False)
+
+    #usecols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
+    x_train.drop([col for col in x_train.columns.values
+                  if 'order_id' in col], axis=1, inplace=True)
+    col = x_train.columns.values
     imp['col'] = col
     imp = imp.sort_values('imp', ascending=False)
     n_features = imp.shape[0]
-    imp_use = imp[imp['imp'] > 0]['col'].values  # .sort_values('imp', ascending=False)
+    imp_use = imp[imp['imp'] == 0]['col'].values  # .sort_values('imp', ascending=False)
 
     """
     usecols = sorted(list(set(df.columns.values.tolist()) & set(DROP_FEATURE)))
@@ -65,10 +79,12 @@ if __name__ == '__main__':
     drop_col = df.columns.values#
     print(drop_col)
     drop_col = drop_col[imp_use]
-    
-    with open('features_tmp.py', 'w') as f:
-        f.write('DROP_FEATURE = ["' + '", "'.join(map(str, drop_col)) + '"]\n')
+    """
+    with open('features_drop.py', 'w') as f:
+        f.write('DROP_FEATURE = ["' + '", "'.join(map(str, imp_use)) + '"]\n')
+
     """
     logger.info('imp use {} {}'.format(imp_use.shape, n_features))
     with open('features_use.py', 'w') as f:
         f.write('FEATURE = ["' + '", "'.join(map(str, imp_use)) + '"]\n')
+    """

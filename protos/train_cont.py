@@ -52,7 +52,7 @@ if __name__ == '__main__':
     logger.setLevel('INFO')
     logger.addHandler(handler)
 
-    handler = FileHandler('train_cont.py.log', 'w')
+    handler = FileHandler('train_cont.py.log', 'a')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
@@ -100,8 +100,9 @@ if __name__ == '__main__':
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
             cnt += 1
-            with open('model_%s.pkl' % cnt, 'rb') as f:
-                booster = pickle.load(f).booster_
+            with open('0719_new_feat_cont2/model2_%s.pkl' % cnt, 'rb') as f:
+                #booster = pickle.load(f).booster_
+                booster = pickle.load(f)
 
             trn_x = x_train[train]
             val_x = x_train[test]
@@ -166,12 +167,14 @@ if __name__ == '__main__':
     gc.collect()
     train_data = lgb.Dataset(x_train, label=y_train)
     logger.info('train start')
-    with open('model.pkl', 'rb') as f:
-        booster = pickle.load(f).booster_
+    with open('0719_new_feat_cont2/model2.pkl', 'rb') as f:
+        #booster = pickle.load(f).booster_
+        booster = pickle.load(f)
+
     clf = lgb.train(min_params,
                     train_data,
-                    trees,
-                    bininit_model=booster)
+                    10000,
+                    init_model=booster)
 
     logger.info('train end')
     with open('model2.pkl', 'wb') as f:

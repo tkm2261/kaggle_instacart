@@ -28,15 +28,24 @@ def multilabel_fscore(y_true, y_pred):
 
 def aaa(folder):
     logging.info('enter' + folder)
-    # with open(folder + 'train_cv_pred.pkl', 'rb') as f:
-    #    pred = pickle.load(f)
-    with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+    with open(folder + 'train_cv_pred_0.pkl', 'rb') as f:
         pred = pickle.load(f)
+    # with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
+    #    pred = pickle.load(f)
 
     df = pd.read_csv(folder + 'train_data_idx.csv')
     df.drop('target', axis=1, inplace=True)
-    df_val = df  # .loc[val, :].copy()
 
+    with open(folder + 'user_split.pkl', 'rb') as f:
+        cv = pickle.load(f)
+
+    user_ids = df['user_id']
+    for train, test in cv[: 1]:
+        trn = user_ids.isin(train)
+        val = user_ids.isin(test)
+
+    df_val = df.loc[val, :].copy()
+    print(df_val.shape, pred.shape)
     df_val['pred'] = pred
     logging.info('exit')
     return df_val
@@ -65,7 +74,7 @@ logging.info('user mean')
 map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
 map_result = make_result()
 
-#df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 #df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
@@ -73,7 +82,8 @@ map_result = make_result()
 
 #df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
 # df_val = aaa('./0706_tuned/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 #df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)

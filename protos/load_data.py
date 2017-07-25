@@ -31,6 +31,13 @@ def read_csv(filename):
         for col in cols:
             df[col] /= row_sum
 
+    def normarize2(col_name):
+        cols = [col for col in df.columns.values if re.search(col_name, col) is not None]
+        #logger.info('{} {}'.format(col_name, cols))
+        row_sum = df.loc[:, cols].sum(axis=1)
+        for col in cols:
+            df[col + '_rate'] = df[col] / row_sum
+
     def drop(col_name):
         cols = [col for col in df.columns.values if re.search(col_name, col) is not None]
         logger.debug('{} {}'.format(col_name, cols))
@@ -51,6 +58,8 @@ def read_csv(filename):
     normarize('u3_order_hour_of_day')
     gc.collect()
 
+    drop('^da')
+    # drop('^dd')
     #cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
     df['since_last_order'] = (df['o_cum_days'] - df['l_cum_days']).astype(np.float32)
     df['since_last_aisle'] = (df['o_cum_days'] - df['la_cum_days']).astype(np.float32)
@@ -90,7 +99,7 @@ def read_multi_csv(folder):
     logger.info('file_num: %s' % len(paths))
     df = None  # pd.DataFrame()
 
-    p = Pool(8)
+    p = Pool()
     df = pd.concat(p.map(read_csv, paths), ignore_index=True, copy=False)
     p.close()
     p.join()
@@ -128,13 +137,6 @@ def load_train_data():
             return data, target, list_cv
     logger.info('load data')
     df = read_multi_csv(TRAIN_DATA_FOLDER)
-    """
-    with open('train_data.pkl', 'wb') as f:
-        pickle.dump(df, f, -1)
-
-    with open('train_data.pkl', 'rb') as f:
-        df = pickle.load(f)
-    """
     logger.info('load base data')
     with open('train_baseline.pkl', 'rb') as f:
         df2, _ = pickle.load(f)
@@ -173,20 +175,10 @@ def load_train_data():
     logger.info('etl data')
     target = df['target'].values
     df.drop('target', axis=1, inplace=True)
-    target = rrr()
-    """
-    id_cols = [col for col in df.columns.values
-               if re.search('_id$', col) is not None and
-               'aisle' not in col and
-               'depart' not in col and
-               'user' not in col]
-    logger.info('drop id_cols {}'.format(id_cols))
-    df.drop(id_cols, axis=1, inplace=True)
-    """
-    #df.drop(cum_cols, axis=1, inplace=True)
     gc.collect()
 
     logger.info('dump data')
+    target = rrr()
     with open(TRAIN_DATA_PATH, 'wb') as f:
         pickle.dump((df, target, list_cv), f, -1)
 
@@ -205,13 +197,6 @@ def load_test_data():
     logger.info('load data')
 
     df = read_multi_csv(TEST_DATA_FOLDER)
-    """
-    with open('test_data.pkl', 'wb') as f:
-        pickle.dump(df, f, -1)
-
-    with open('test_data.pkl', 'rb') as f:
-        df = pickle.load(f)
-    """
     with open('test_baseline.pkl', 'rb') as f:
         df2 = pickle.load(f)
     f_to_use = ['order_id', 'user_id', 'product_id',
@@ -221,28 +206,26 @@ def load_test_data():
                 'aisle_id', 'department_id', 'product_orders', 'product_reorders',
                 'product_reorder_rate', 'UP_orders', 'UP_orders_ratio',
                 'UP_average_pos_in_cart', 'UP_reorder_rate', 'UP_orders_since_last',
-                'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order'
+                'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order
     #f_to_use = sorted(list(set(f_to_use) & set(DROP_FEATURE)))
-    df2 = df2[f_to_use]
+    df2 = df2[f_to_use].astype(np.float32)
+
+    gc.collect()
+    logger.info('load base merge')
     df = pd.merge(df, df2, how='left', left_on=['o_order_id', 'o_user_id', 'o_product_id'],
-                  right_on=['order_id', 'user_id', 'product_id'])
+                  right_on=['order_id', 'user_id', 'product_id'], copy=False)
 
     _df = df[['o_order_id', 'o_user_id', 'o_product_id']]
     _df.columns = ['order_id', 'user_id', 'product_id']
     _df.to_csv('test_data_idx.csv', index=False)
+    del _df
+    del df2
+    gc.collect()
 
     logger.info('etl data')
-    """
-    id_cols = [col for col in df.columns.values
-               if re.search('_id$', col) is not None and
-               'aisle' not in col and
-               'depart' not in col and
-               'user' not in col]
-    logger.info('drop id_cols {}'.format(id_cols))
-    df.drop(id_cols, axis=1, inplace=True)
-    """
+    gc.collect()
+
     logger.info('dump data')
-    #df.drop(DROP_FEATURE, axis=1, inplace=True)
     with open(TEST_DATA_PATH, 'wb') as f:
         pickle.dump(df, f, -1)
 
