@@ -153,6 +153,9 @@ if __name__ == '__main__':
         pickle.dump(usecols, f, -1)
     gc.collect()
 
+    with open('tmp.pkl', 'wb') as f:
+        pickle.dump((x_train, y_train, cv), f, -1)
+
     fillna_mean = x_train.mean()
     with open('fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)

@@ -87,6 +87,9 @@ def read_csv(filename):
     logger.debug('id_cols {}'.format(id_cols))
     df.drop(id_cols, axis=1, inplace=True)
 
+    dropcols = sorted(list(set(df.columns.values.tolist()) & set(DROP_FEATURE)))
+    df.drop(dropcols, axis=1, inplace=True)
+
     gc.collect()
 
     return df.astype(np.float32)
@@ -150,6 +153,8 @@ def load_train_data():
                 'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order
     #f_to_use = sorted(list(set(f_to_use) & set(DROP_FEATURE)))
     df2 = df2[f_to_use].astype(np.float32)
+    dropcols = sorted(list(set(df2.columns.values.tolist()) & set(DROP_FEATURE)))
+    df2.drop(dropcols, axis=1, inplace=True)
 
     gc.collect()
     logger.info('load base merge')
@@ -179,8 +184,8 @@ def load_train_data():
 
     logger.info('dump data')
     target = rrr()
-    with open(TRAIN_DATA_PATH, 'wb') as f:
-        pickle.dump((df, target, list_cv), f, -1)
+    # with open(TRAIN_DATA_PATH, 'wb') as f:
+    #    pickle.dump((df, target, list_cv), f, -1)
 
     logger.info('exit')
     return df, target, list_cv
@@ -209,6 +214,8 @@ def load_test_data():
                 'UP_delta_hour_vs_last']  # 'dow', 'UP_same_dow_as_last_order
     #f_to_use = sorted(list(set(f_to_use) & set(DROP_FEATURE)))
     df2 = df2[f_to_use].astype(np.float32)
+    dropcols = sorted(list(set(df.columns.values.tolist()) & set(DROP_FEATURE)))
+    df.drop(dropcols, axis=1, inplace=True)
 
     gc.collect()
     logger.info('load base merge')
