@@ -4,7 +4,9 @@ from Cython.Distutils import build_ext
 import numpy
 
 setup(
-    cmdclass = {'build_ext': build_ext},
-    ext_modules = [Extension("utils", ["utils.pyx"])],
-    include_dirs = [numpy.get_include()]
+    cmdclass={'build_ext': build_ext},
+    ext_modules=[Extension("utils", ["utils.pyx"])],
+    include_dirs=[numpy.get_include()],
+    extra_compile_args=['-fopenmp'],
+    extra_link_args=['-fopenmp'],
 )

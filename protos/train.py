@@ -32,27 +32,44 @@ def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1, f1_group
+from utils import f1, f1_group, f1_group_idx
+
+DIR = 'result_tmp/'
 
 
 def f1_metric(label, pred):
-    #res = [f1(label.take(i), pred.take(i)) for i in list_idx]
     res = f1_group(label, pred, list_idx)
     sc = np.mean(res)
     logger.debug('f1: %s' % (sc))
     return 'f1', sc, True
 
 
+def cst_obj(label, preds):
+    label = np.where(label > 0, 1, -1)
+    preds = 1.0 / (1.0 + np.exp(-preds))
+    #res = f1_group_idx(label, preds, list_idx).astype(np.bool)
+    response = - label / (1.0 + np.exp(1.0 + label * preds))
+    grad = response
+    abs_response = np.fabs(response)
+    hess = abs_response * (1 - abs_response)
+    #grad[res] *= 0.8
+    #grad[~res] *= 1.2
+    #grad = preds - label
+    #hess = preds * (1.0 - preds)
+
+    return grad, hess
+
+
 def get_stack(folder, is_train=True):
     col = 'hogehoge'
     if is_train:
         with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
-            df = pd.read_csv(folder + 'train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+            df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
             df[col] = pickle.load(f).astype(np.float32)
             df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
     else:
         with open(folder + 'test_tmp.pkl', 'rb') as f:
-            df = pd.read_csv(folder + 'test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+            df = pd.read_csv('test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
             df[col] = pickle.load(f).astype(np.float32)[:, 1]
             df1 = pd.read_csv('test_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
 
@@ -74,7 +91,7 @@ if __name__ == '__main__':
     handler.setFormatter(log_fmt)
     logger.addHandler(handler)
 
-    handler = FileHandler('train2.py.log', 'a')
+    handler = FileHandler(DIR + 'train.py.log', 'a')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
@@ -103,15 +120,16 @@ if __name__ == '__main__':
     all_params = {'min_child_weight': [10],
                   'subsample': [0.9],
                   'seed': [114514],
-                  'n_estimators': [1000, 2000, 3000, 4000, 5000],
+                  'n_estimators': [3000],
                   'colsample_bytree': [0.9],
                   'silent': [False],
                   'learning_rate': [0.1],
                   'max_depth': [5],
-                  'min_data_in_bin': [3],
+                  'min_data_in_bin': [8],
                   'min_split_gain': [0],
                   'reg_alpha': [1],
                   'max_bin': [511],
+                  #'objective': [cst_obj],
                   #'objective': ['xentropy'],
                   #'metric_freq': [100]
                   }
@@ -129,6 +147,7 @@ if __name__ == '__main__':
     # sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
 
     logger.info('merges')
+    """
     x_train = x_train.merge(pd.read_csv('product_last.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
                             on='o_product_id', copy=True)
     x_train = x_train.merge(pd.read_csv('product_first.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
@@ -140,6 +159,9 @@ if __name__ == '__main__':
 
     x_train = x_train.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
                             on='o_user_id', copy=True)
+    """
+    init_score = get_stack('result_0727/')
+    #init_score = np.log(init_score / (1 - init_score))
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -152,12 +174,12 @@ if __name__ == '__main__':
 
     usecols = x_train.columns.values
     #logger.debug('all_cols {}'.format(usecols))
-    with open('usecols.pkl', 'wb') as f:
+    with open(DIR + 'usecols.pkl', 'wb') as f:
         pickle.dump(usecols, f, -1)
     gc.collect()
 
     fillna_mean = x_train.mean()
-    with open('fillna_mean.pkl', 'wb') as f:
+    with open(DIR + 'fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
 
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
@@ -192,12 +214,16 @@ if __name__ == '__main__':
             trn_w = sample_weight[train]
             val_w = sample_weight[test]
 
+            trn_sc = init_score[train]
+            val_sc = init_score[test]
+
             list_idx = df.loc[test].reset_index(drop=True).groupby(
                 'order_id').apply(lambda x: x.index.values.shape[0]).tolist()
             list_idx = np.array(list_idx, dtype=np.int)
 
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y,
+                    #init_score=trn_sc, eval_init_score=[val_sc],
                     # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
                     #eval_set=[(val_x, val_y)],
@@ -220,15 +246,14 @@ if __name__ == '__main__':
             else:
                 list_best_iter.append(params['n_estimators'])
 
-            with open('train_cv_pred_%s.pkl' % cnt, 'wb') as f:
+            with open(DIR + 'train_cv_pred_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(pred, f, -1)
-            with open('model_%s.pkl' % cnt, 'wb') as f:
+            with open(DIR + 'model_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(clf, f, -1)
             del trn_x
             del clf
             gc.collect()
-            break
-        with open('train_cv_tmp.pkl', 'wb') as f:
+        with open(DIR + 'train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
         logger.info('trees: {}'.format(list_best_iter))
@@ -259,25 +284,25 @@ if __name__ == '__main__':
             eval_metric="auc",
             # sample_weight=sample_weight
             )
-    with open('model.pkl', 'wb') as f:
+    with open(DIR + 'model.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
 
     ###
-    with open('model.pkl', 'rb') as f:
+    with open(DIR + 'model.pkl', 'rb') as f:
         clf = pickle.load(f)
-    with open('usecols.pkl', 'rb') as f:
+    with open(DIR + 'usecols.pkl', 'rb') as f:
         usecols = pickle.load(f)
 
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
     imp['col'] = usecols
     n_features = imp.shape[0]
     imp = imp.sort_values('imp', ascending=False)
-    imp.to_csv('feature_importances.csv')
+    imp.to_csv(DIR + 'feature_importances.csv')
     logger.info('imp use {} {}'.format(imp[imp.imp > 0].shape, n_features))
 
-    with open('fillna_mean.pkl', 'rb') as f:
+    with open(DIR + 'fillna_mean.pkl', 'rb') as f:
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
@@ -318,5 +343,5 @@ if __name__ == '__main__':
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
     p_test = clf.predict_proba(x_test)
-    with open('test_tmp.pkl', 'wb') as f:
+    with open(DIR + 'test_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)

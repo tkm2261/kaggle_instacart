@@ -40,6 +40,7 @@ def f1_metric_xgb(pred, dtrain):
     #res = [f1(label.take(i), pred.take(i)) for i in list_idx]
     res = f1_group(label, pred, list_idx)
     sc = np.mean(res)
+    logger.debug('f1: %s' % (sc))
     return 'f1', - sc
 
 
@@ -88,7 +89,7 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     all_params = {'max_depth': [5],
-                  'n_estimators': [3000],
+                  'n_estimators': [10000],
                   'min_child_weight': [10],
                   'subsample': [0.9],
                   'colsample_bytree': [0.8],
@@ -187,7 +188,7 @@ if __name__ == '__main__':
                             d_train,
                             params['n_estimators'],
                             watchlist,
-                            feval=f1_metric,
+                            feval=f1_metric_xgb,
                             verbose_eval=1)
 
             pred = clf.predict(d_valid)

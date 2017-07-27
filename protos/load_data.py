@@ -58,7 +58,7 @@ def read_csv(filename):
     normarize('u3_order_hour_of_day')
     gc.collect()
 
-    drop('^da')
+    # drop('^da')
     # drop('^dd')
     #cum_cols = [col for col in df.columns.values if re.search('cum', col) is not None]
     df['since_last_order'] = (df['o_cum_days'] - df['l_cum_days']).astype(np.float32)
@@ -80,6 +80,32 @@ def read_csv(filename):
     df['since_last_visit_order2'] = (df['o_order_number'] - df['l2_max_order_number']).astype(np.float32)
     df['since_last_visit_aisle2'] = (df['o_order_number'] - df['la2_max_order_number']).astype(np.float32)
     df['since_last_visit_depart2'] = (df['o_order_number'] - df['ld2_max_order_number']).astype(np.float32)
+
+    df['user_item_days_rate'] = (df['since_last_order'] / df['du_avg_diffs']).astype(np.float32)
+    df['user_item_days_rate_30'] = (df['since_last_order'] / df['du3_avg_diffs']).astype(np.float32)
+    df['user_item_days_rate_reordered_30'] = (df['since_last_order'] / df['dui3_avg_diffs']).astype(np.float32)
+
+    df['user_item_days_diff'] = (df['since_last_order'] - df['du_avg_diffs']).astype(np.float32)
+    df['user_item_days_diff_30'] = (df['since_last_order'] - df['du3_avg_diffs']).astype(np.float32)
+    df['user_item_days_diff_reordered_30'] = (df['since_last_order'] - df['dui3_avg_diffs']).astype(np.float32)
+
+    ###
+    #df['user_aisle_days_rate'] = (df['since_last_aisle'] / df['da_avg_diffs']).astype(np.float32)
+    df['user_aisle_days_rate_30'] = (df['since_last_aisle'] / df['da3_avg_diffs']).astype(np.float32)
+    df['user_aisle_days_rate_reordered_30'] = (df['since_last_aisle'] / df['dai3_avg_diffs']).astype(np.float32)
+
+    #df['user_aisle_days_diff'] = (df['since_last_aisle'] - df['da_avg_diffs']).astype(np.float32)
+    df['user_aisle_days_diff_30'] = (df['since_last_aisle'] - df['da3_avg_diffs']).astype(np.float32)
+    df['user_aisle_days_diff_reordered_30'] = (df['since_last_aisle'] - df['dai3_avg_diffs']).astype(np.float32)
+
+    ###
+    #df['user_depart_days_rate'] = (df['since_last_depart'] / df['dd_avg_diffs']).astype(np.float32)
+    df['user_depart_days_rate_30'] = (df['since_last_depart'] / df['dd3_avg_diffs']).astype(np.float32)
+    df['user_depart_days_rate_reordered_30'] = (df['since_last_depart'] / df['dddi3_avg_diffs']).astype(np.float32)
+
+    #df['user_depart_days_diff'] = (df['since_last_depart'] - df['dd_avg_diffs']).astype(np.float32)
+    df['user_depart_days_diff_30'] = (df['since_last_depart'] - df['dd3_avg_diffs']).astype(np.float32)
+    df['user_depart_days_diff_reordered_30'] = (df['since_last_depart'] - df['dddi3_avg_diffs']).astype(np.float32)
 
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
@@ -126,6 +152,22 @@ def rrr():
     df1 = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
     df = pd.read_csv('../input/df_train.csv', usecols=['order_id', 'user_id', 'product_id', 'reordered'])
     return pd.merge(df1, df, how='left', on=['order_id', 'user_id', 'product_id'])['reordered'].fillna(0).values
+
+
+def _join_data(df):
+    logger.info('merges')
+    df = df.merge(pd.read_csv('product_last.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                  on='o_product_id', copy=False)
+    df = df.merge(pd.read_csv('product_first.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                  on='o_product_id', copy=False)
+    df = df.merge(pd.read_csv('product_all.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                  on='o_product_id', copy=False)
+    df = df.merge(pd.read_csv('word_preds.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                  on='o_product_id', copy=False)
+    df = df.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
+                  on='o_user_id', copy=False)
+    logger.info('end')
+    return df
 
 
 def load_train_data():
@@ -187,6 +229,8 @@ def load_train_data():
 
     logger.info('dump data')
     target = rrr()
+
+    df = _join_data(df)
     with open(TRAIN_DATA_PATH, 'wb') as f:
         pickle.dump((df, target, list_cv), f, -1)
 
@@ -236,6 +280,7 @@ def load_test_data():
     gc.collect()
 
     logger.info('dump data')
+    df = _join_data(df)
     with open(TEST_DATA_PATH, 'wb') as f:
         pickle.dump(df, f, -1)
 
