@@ -31,7 +31,29 @@ def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1, f1_group
+from utils import f1, f1_group, f1_group_idx
+
+DIR = 'result_tmp/'
+
+
+def f1_metric(label, pred):
+    res = f1_group(label, pred, list_idx)
+    sc = np.mean(res)
+    logger.debug('f1: %s' % (sc))
+    return 'f1', sc, True
+
+def logregobj(preds, dtrain):
+
+    labels = dtrain.get_label()
+    res = f1_group_idx(labels, preds, list_idx).astype(np.bool)
+
+    preds = 1.0 / (1.0 + np.exp(-preds))
+    grad = preds - labels
+    hess = preds * (1.0-preds)
+    grad[res] *= 0.8
+    grad[~res] *= 1.2
+    return grad, hess
+
 
 
 def f1_metric_xgb(pred, dtrain):
@@ -42,13 +64,6 @@ def f1_metric_xgb(pred, dtrain):
     sc = np.mean(res)
     logger.debug('f1: %s' % (sc))
     return 'f1', - sc
-
-
-def f1_metric(label, pred):
-    #res = [f1(label.take(i), pred.take(i)) for i in list_idx]
-    res = f1_group(label, pred, list_idx)
-    sc = np.mean(res)
-    return 'f1', sc, True
 
 
 def get_stack(folder, is_train=True):
@@ -113,15 +128,6 @@ if __name__ == '__main__':
     # sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
 
     logger.info('merges')
-    x_train = x_train.merge(pd.read_csv('product_last.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('product_first.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('product_all.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('word_preds.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-
     x_train = x_train.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
                             on='o_user_id', copy=True)
 
@@ -189,6 +195,7 @@ if __name__ == '__main__':
                             params['n_estimators'],
                             watchlist,
                             feval=f1_metric_xgb,
+                            obj=logregobj,
                             verbose_eval=1)
 
             pred = clf.predict(d_valid)
