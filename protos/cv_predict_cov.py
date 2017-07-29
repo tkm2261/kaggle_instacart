@@ -13,6 +13,7 @@ import logging
 log_fmt = '%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s'
 
 logging.basicConfig(format=log_fmt, level=logging.DEBUG)
+from utils import f1 as f1_score
 
 
 def multilabel_fscore(y_true, y_pred):
@@ -25,7 +26,7 @@ def multilabel_fscore(y_true, y_pred):
         return 0
     return (2 * precision * recall) / (precision + recall)
 
-
+'''
 def aaa(folder):
     logging.info('enter' + folder)
     with open(folder + 'train_cv_pred_0.pkl', 'rb') as f:
@@ -116,7 +117,7 @@ for i in tqdm(range(n)):
 
 with open('item_info.pkl', 'wb') as f:
     pickle.dump((map_pred, map_result), f, -1)
-
+'''
 
 with open('item_info.pkl', 'rb') as f:
     map_pred, map_result = pickle.load(f)
@@ -131,7 +132,7 @@ def add_none(num, sum_pred, safe):
 
 
 np.random.seed(0)
-NUM = 10000
+NUM = 20000
 IS_COV = False
 with open('map_user_order_num.pkl', 'rb') as f:
     map_user_order_num = pickle.load(f)
@@ -145,20 +146,43 @@ df_a = pd.read_csv('../input/df_train.csv', usecols=['product_id', 'reordered'],
 set_product = set(df_a['product_id'].unique().tolist())
 
 
-def get_cov(user_id):
+def get_cov(user_id, items):
+    n = len(items)
     with open('../recommend/cov_data/%s.pkl' % user_id, 'rb') as f:
-        return pickle.load(f)
+        cov_data = pickle.load(f)
+    idx = [cov_data.map_item2idx[i] for i in items]
+    try:
+        tmp = cov_data.cov_matrix[idx, idx]
+    except:
+        tmp = np.array([[1]])
+    cov_matrix = np.zeros((n + 1, n + 1))
+    cov_matrix[:n, :n] += tmp
+    cov_matrix[n - 1, n - 1] = 1
+    return cov_matrix
 
-
-ALPHA = 0.1
+ALPHA = 0.6
 from scipy.stats import norm
+logging.info('all cov')
+with open('../recommend/all_cov.pkl', 'rb') as f:
+    all_cov_data = pickle.load(f)
+logging.info('all cov end')
 
+def get_all_cov(user_id, items):
+    n = len(items)
+    idx = [all_cov_data.map_item2idx[i] for i in items]
+    try:
+        tmp = all_cov_data.cov_matrix[idx, idx]
+    except:
+        tmp = np.array([[1]])
+    cov_matrix = np.zeros((n + 1, n + 1))
+    cov_matrix[:n, :n] += tmp
+    cov_matrix[n - 1, n - 1] = 1
+    return cov_matrix
 
-def get_y_true2(preds, none_idx, cov_matrix):
+def get_y_true2(preds, none_idx, cov_matrix, order_num):
     n = preds.shape[0]
-
-    cov_matrix = ALPHA * cov_matrix + (1 - ALPHA) * np.eye(n)
-
+    a = 0.3
+    cov_matrix = a * cov_matrix + (1 - a) * np.eye(n)        
     tmp = np.random.multivariate_normal(np.zeros(n), cov_matrix, size=NUM)
     preds = np.array([norm.ppf(q=p, loc=0, scale=np.sqrt(cov_matrix[i, i])) for i, p in enumerate(preds)])
 
@@ -173,22 +197,17 @@ def uuu(args):
 
     preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
     items = [int(product_id) for product_id, _, _, _, _ in vals]
+    ans = map_result.get(order_id, ['None'])
 
-    if 1:
-        user_id = vals[0][4]
-        n = preds.shape[0]
-        if map_user_order_num[user_id] >= 10:
-            cov_data = get_cov(user_id)
-            idx = [cov_data.map_item2idx[i] for i in items]
-            try:
-                tmp = cov_data.cov_matrix[idx, idx]
-            except:
-                tmp = np.array([[1]])
-            cov_matrix = np.zeros((n + 1, n + 1))
-            cov_matrix[:n, :n] += tmp
-            cov_matrix[n - 1, n - 1] = 1
-        else:
-            cov_matrix = np.eye(n + 1)
+    user_id = vals[0][4]
+    n = preds.shape[0]
+
+    if 1:#map_user_order_num[user_id] >= 10:
+        cov_matrix = get_all_cov(user_id, items)
+    else:
+        ans = set(ans)
+        label = np.array([1 if i in ans else 0 for i in items], dtype=np.int)
+        return f1_score(label, preds)
 
     none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
@@ -201,7 +220,7 @@ def uuu(args):
     none_idx = idx[-1]
     #sum_pred = preds.sum()
 
-    scenario = get_y_true2(preds, none_idx, cov_matrix)
+    scenario = get_y_true2(preds, none_idx, cov_matrix, map_user_order_num[user_id])
 
     num_y_true = scenario.sum(axis=1)
     scores = []
@@ -218,12 +237,7 @@ def uuu(args):
         scores.append((f1, i))
     f1, idx = max(scores, key=lambda x: x[0])
     score = items[:idx + 1]
-    """
-    if add_none(idx +1, f1, 1):
-        if 'None' not in score:
-            score += ['None']
-    """
-    ans = map_result.get(order_id, ['None'])
+
     sc = multilabel_fscore(ans, score)
     # print(ans, score, f1, sc)
     return sc
