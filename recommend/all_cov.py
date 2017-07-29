@@ -13,8 +13,8 @@ df = pandas.read_csv(path,
                          usecols=COLUMN_NAMES, dtype=int)
 
 def read_csv(data,  delimiter=","):
-    a = data['reordered'].values
-    data['score'] = numpy.ones(data.shape[0], dtype=numpy.int8)
+    #a = data['reordered'].values
+    data['score'] = numpy.ones(data.shape[0], dtype=numpy.float64)
     order_ids = numpy.sort(data["order_id"].unique())
     item_ids = numpy.sort(data["product_id"].unique())
 
@@ -28,15 +28,16 @@ def read_csv(data,  delimiter=","):
     A = spMat.coo_matrix(
         (data["score"], (data["order_id"], data["product_id"])),
         shape=(len(order_ids), len(item_ids))
-    )
+    ).T.tolil()
     print(0)    
-    mu = A.mean(axis=0)
-    print(1)
-    N = A.shape[0]
+    mu = A.mean(axis=1)
+    print(1, mu.shape)
+    N = A.shape[1]
     print(2)
-    A -= mu
-    print(3)    
-    A = A.T * A
+    for i, m in tqdm(enumerate(mu)):
+        A.data[i] = [t - m[0, 0] for t in A.data[i]]
+    print(3, A.shape)    
+    A = A * A.T
     print(4)
     A /= N
     print(5)    
