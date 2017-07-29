@@ -117,20 +117,20 @@ if __name__ == '__main__':
                   'seed': [114514]
                   }
     """
-    all_params = {'min_child_weight': [10],
-                  'subsample': [0.9],
-                  'seed': [114514],
-                  'n_estimators': [3000],
-                  'colsample_bytree': [0.9],
+    all_params = {'min_child_weight': [10, 13],
+                  'subsample': [0.9, 0.7],
+                  'seed': [1113],
+                  'n_estimators': [1800],
+                  'colsample_bytree': [0.9, 0.8],
                   'silent': [False],
                   'learning_rate': [0.1],
                   'max_depth': [5],
                   'min_data_in_bin': [8],
-                  'min_split_gain': [0],
-                  'reg_alpha': [1],
+                  'min_split_gain': [0, 0.001],
+                  'reg_alpha': [1, 0.5],
                   'max_bin': [511],
                   #'objective': [cst_obj],
-                  #'objective': ['xentropy'],
+                  'objective': ['binary', 'xentropy'],
                   #'metric_freq': [100]
                   }
     logger.info('load start')
@@ -138,29 +138,8 @@ if __name__ == '__main__':
 
     df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
 
-    weight_col = 'order_id'
-    order_idx = df.order_id.values
-    tmp = df.groupby(weight_col)[[weight_col]].count()
-    tmp.columns = ['weight']
-    df = pd.merge(df, tmp.reset_index(), how='left', on=weight_col)
-    sample_weight = 1 / np.log(df['weight'].values)
-    # sample_weight *= (sample_weight.shape[0] / sample_weight.sum())
-
     logger.info('merges')
-    """
-    x_train = x_train.merge(pd.read_csv('product_last.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('product_first.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('product_all.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('word_preds.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-
-    x_train = x_train.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
-                            on='o_user_id', copy=True)
-    """
-    init_score = get_stack('result_0727/')
+    #x_train['stack1'] = get_stack('result_0727/')
     #init_score = np.log(init_score / (1 - init_score))
 
     id_cols = [col for col in x_train.columns.values
@@ -172,6 +151,11 @@ if __name__ == '__main__':
     dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     x_train.drop(dropcols, axis=1, inplace=True)
 
+    cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
+    cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
+    #cols_ = cols_['col'].values.tolist()[250:]
+    dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
+    x_train.drop(dropcols, axis=1, inplace=True)
     usecols = x_train.columns.values
     #logger.debug('all_cols {}'.format(usecols))
     with open(DIR + 'usecols.pkl', 'wb') as f:
@@ -183,6 +167,8 @@ if __name__ == '__main__':
         pickle.dump(fillna_mean, f, -1)
 
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
+    x_train[np.isnan(x_train)] = -100
+    x_train[np.isinf(x_train)] = -100
 
     logger.info('data end')
     # x_train[np.isnan(x_train)] = -10
@@ -211,11 +197,8 @@ if __name__ == '__main__':
 
             val_y = y_train[test]
 
-            trn_w = sample_weight[train]
-            val_w = sample_weight[test]
-
-            trn_sc = init_score[train]
-            val_sc = init_score[test]
+            #trn_sc = init_score[train]
+            #val_sc = init_score[test]
 
             list_idx = df.loc[test].reset_index(drop=True).groupby(
                 'order_id').apply(lambda x: x.index.values.shape[0]).tolist()
@@ -253,6 +236,7 @@ if __name__ == '__main__':
             del trn_x
             del clf
             gc.collect()
+            break
         with open(DIR + 'train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
@@ -278,6 +262,8 @@ if __name__ == '__main__':
 
     gc.collect()
 
+    # for params in tqdm(list(ParameterGrid(all_params))):
+    #    min_params = params
     clf = LGBMClassifier(**min_params)
     clf.fit(x_train, y_train,
             verbose=True,
@@ -306,26 +292,12 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
-    logger.info('product_last')
-    x_test = x_test.merge(pd.read_csv('product_last.csv').astype(np.float32), how='left',
-                          left_on='o_product_id', right_on='product_id', copy=False)
-    logger.info('product_first')
-    x_test = x_test.merge(pd.read_csv('product_first.csv').astype(np.float32), how='left',
-                          left_on='o_product_id', right_on='product_id', copy=False)
-    logger.info('product_all')
-    x_test = x_test.merge(pd.read_csv('product_all.csv').astype(np.float32), how='left',
-                          left_on='o_product_id', right_on='product_id', copy=False)
-    logger.info('product_wordpred')
-    x_test = x_test.merge(pd.read_csv('word_preds.csv').astype(np.float32), how='left',
-                          left_on='o_product_id', right_on='product_id', copy=False)
-    x_test = x_test.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
-                          on='o_user_id', copy=True)
-
     id_cols = [col for col in x_test.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
     logger.debug('id_cols {}'.format(id_cols))
     x_test.drop(id_cols, axis=1, inplace=True)
+    x_train['stack1'] = get_stack('result_0727/', is_train=False)
     logger.info('usecols')
     # x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
     # x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)

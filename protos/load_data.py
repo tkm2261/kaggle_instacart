@@ -80,7 +80,30 @@ def read_csv(filename):
     df['since_last_visit_order2'] = (df['o_order_number'] - df['l2_max_order_number']).astype(np.float32)
     df['since_last_visit_aisle2'] = (df['o_order_number'] - df['la2_max_order_number']).astype(np.float32)
     df['since_last_visit_depart2'] = (df['o_order_number'] - df['ld2_max_order_number']).astype(np.float32)
+    ###
+    """
+    df['user_avg_days_rate'] = (df['udd_avg_diffs'] / df['du_avg_diffs']).astype(np.float32)
+    df['user_avg_days_rate_30'] = (df['udd3_avg_diffs'] / df['du3_avg_diffs']).astype(np.float32)
 
+    df['user_days_rate'] = (df['since_last_order'] / df['udd_avg_diffs']).astype(np.float32)
+    df['user_days_rate_30'] = (df['since_last_order'] / df['udd3_avg_diffs']).astype(np.float32)
+
+    df['item_days_rate'] = (df['since_last_order'] / df['di_avg_diffs']).astype(np.float32)
+    df['item_days_rate_30'] = (df['since_last_order'] / df['di3_avg_diffs']).astype(np.float32)
+
+    ###
+
+    df['user_avg_days_diff'] = (df['udd_avg_diffs'] - df['du_avg_diffs']).astype(np.float32)
+    df['user_avg_days_diff_30'] = (df['udd3_avg_diffs'] - df['du3_avg_diffs']).astype(np.float32)
+
+    df['user_days_diff'] = (df['since_last_order'] - df['udd_avg_diffs']).astype(np.float32)
+    df['user_days_diff_30'] = (df['since_last_order'] - df['udd3_avg_diffs']).astype(np.float32)
+
+    df['item_days_diff'] = (df['since_last_order'] - df['di_avg_diffs']).astype(np.float32)
+    df['item_days_diff_30'] = (df['since_last_order'] - df['di3_avg_diffs']).astype(np.float32)
+    """
+
+    ###
     df['user_item_days_rate'] = (df['since_last_order'] / df['du_avg_diffs']).astype(np.float32)
     df['user_item_days_rate_30'] = (df['since_last_order'] / df['du3_avg_diffs']).astype(np.float32)
     df['user_item_days_rate_reordered_30'] = (df['since_last_order'] / df['dui3_avg_diffs']).astype(np.float32)
