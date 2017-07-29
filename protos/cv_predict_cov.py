@@ -26,6 +26,7 @@ def multilabel_fscore(y_true, y_pred):
         return 0
     return (2 * precision * recall) / (precision + recall)
 
+
 '''
 def aaa(folder):
     logging.info('enter' + folder)
@@ -160,12 +161,14 @@ def get_cov(user_id, items):
     cov_matrix[n - 1, n - 1] = 1
     return cov_matrix
 
+
 ALPHA = 0.6
 from scipy.stats import norm
 logging.info('all cov')
 with open('../recommend/all_cov.pkl', 'rb') as f:
     all_cov_data = pickle.load(f)
 logging.info('all cov end')
+
 
 def get_all_cov(user_id, items):
     n = len(items)
@@ -179,10 +182,11 @@ def get_all_cov(user_id, items):
     cov_matrix[n - 1, n - 1] = 1
     return cov_matrix
 
+
 def get_y_true2(preds, none_idx, cov_matrix, order_num):
     n = preds.shape[0]
-    a = 0.3
-    cov_matrix = a * cov_matrix + (1 - a) * np.eye(n)        
+    a = 0.6
+    #cov_matrix = a * cov_matrix + (1 - a) * np.eye(n)
     tmp = np.random.multivariate_normal(np.zeros(n), cov_matrix, size=NUM)
     preds = np.array([norm.ppf(q=p, loc=0, scale=np.sqrt(cov_matrix[i, i])) for i, p in enumerate(preds)])
 
@@ -202,12 +206,15 @@ def uuu(args):
     user_id = vals[0][4]
     n = preds.shape[0]
 
-    if 1:#map_user_order_num[user_id] >= 10:
-        cov_matrix = get_all_cov(user_id, items)
+    if map_user_order_num[user_id] >= 10:
+        a = 0.6
+        cov_matrix = get_cov(user_id, items) * a + (1 - a) * np.eye(n + 1)
     else:
-        ans = set(ans)
-        label = np.array([1 if i in ans else 0 for i in items], dtype=np.int)
-        return f1_score(label, preds)
+        a = 0.3
+        cov_matrix = get_all_cov(user_id, items) * a + (1 - a) * np.eye(n + 1)
+        #ans = set(ans)
+        #label = np.array([1 if i in ans else 0 for i in items], dtype=np.int)
+        # return f1_score(label, preds)
 
     none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
