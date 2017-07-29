@@ -47,13 +47,18 @@ def read_csv(filename):
     normarize('u_u3_order_hour_of_day')
     normarize('u_u4_department_id')
     gc.collect()
-
-    gc.collect()
-
     normarize('i_i2_order_dow')
     normarize('i_i3_order_hour_of_day')
     normarize('i_i4_department_id')
 
+    normarize('u2_u2_order_dow')
+    normarize('u2_u3_order_hour_of_day')
+    normarize('u2_u4_department_id')
+    gc.collect()
+    normarize('i2_i2_order_dow')
+    normarize('i2_i3_order_hour_of_day')
+    normarize('i2_i4_department_id')    
+    
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
     gc.collect()
