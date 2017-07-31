@@ -117,20 +117,21 @@ if __name__ == '__main__':
                   'seed': [114514]
                   }
     """
-    all_params = {'min_child_weight': [10, 13],
-                  'subsample': [0.9, 0.7],
-                  'seed': [1113],
-                  'n_estimators': [1800],
-                  'colsample_bytree': [0.9, 0.8],
+
+    all_params = {'min_child_weight': [10],
+                  'subsample': [0.9],
+                  'seed': [114514],
+                  'n_estimators': [18000],
+                  'colsample_bytree': [0.9],
                   'silent': [False],
-                  'learning_rate': [0.1],
+                  'learning_rate': [0.01],
                   'max_depth': [5],
                   'min_data_in_bin': [8],
-                  'min_split_gain': [0, 0.001],
-                  'reg_alpha': [1, 0.5],
+                  'min_split_gain': [0],
+                  'reg_alpha': [1],
                   'max_bin': [511],
                   #'objective': [cst_obj],
-                  'objective': ['binary', 'xentropy'],
+                  #'objective': ['xentropy'],
                   #'metric_freq': [100]
                   }
     logger.info('load start')
@@ -142,6 +143,9 @@ if __name__ == '__main__':
     #x_train['stack1'] = get_stack('result_0727/')
     #init_score = np.log(init_score / (1 - init_score))
 
+    x_train = x_train.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                            on='o_product_id', copy=False)
+
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
@@ -151,11 +155,11 @@ if __name__ == '__main__':
     dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     x_train.drop(dropcols, axis=1, inplace=True)
 
-    cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
-    cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
+    #cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
+    #cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
     #cols_ = cols_['col'].values.tolist()[250:]
-    dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
-    x_train.drop(dropcols, axis=1, inplace=True)
+    #dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
+    #x_train.drop(dropcols, axis=1, inplace=True)
     usecols = x_train.columns.values
     #logger.debug('all_cols {}'.format(usecols))
     with open(DIR + 'usecols.pkl', 'wb') as f:
@@ -292,12 +296,15 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
+    x_test = x_test.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                          on='o_product_id', copy=False)
+
     id_cols = [col for col in x_test.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
     logger.debug('id_cols {}'.format(id_cols))
     x_test.drop(id_cols, axis=1, inplace=True)
-    x_train['stack1'] = get_stack('result_0727/', is_train=False)
+
     logger.info('usecols')
     # x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
     # x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)

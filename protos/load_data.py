@@ -26,7 +26,7 @@ def read_csv(filename):
 
     def normarize(col_name):
         cols = [col for col in df.columns.values if re.search(col_name, col) is not None]
-        #logger.info('{} {}'.format(col_name, cols))
+        logger.info('{} {}'.format(col_name, len(cols)))
         row_sum = df.loc[:, cols].sum(axis=1)
         for col in cols:
             df[col] /= row_sum
@@ -51,14 +51,10 @@ def read_csv(filename):
     normarize('i_i3_order_hour_of_day')
     normarize('i_i4_department_id')
 
-    normarize('u2_u2_order_dow')
-    normarize('u2_u3_order_hour_of_day')
-    normarize('u2_u4_department_id')
+    drop('^u2_')
     gc.collect()
-    normarize('i2_i2_order_dow')
-    normarize('i2_i3_order_hour_of_day')
-    normarize('i2_i4_department_id')    
-    
+    drop('^i2_')
+
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
     gc.collect()
@@ -156,7 +152,7 @@ def read_multi_csv(folder):
     logger.info('file_num: %s' % len(paths))
     df = None  # pd.DataFrame()
 
-    p = Pool()
+    p = Pool(28)
     df = pd.concat(p.map(read_csv, paths), ignore_index=True, copy=False)
     p.close()
     p.join()
