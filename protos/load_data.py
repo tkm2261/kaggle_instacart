@@ -82,7 +82,7 @@ def read_csv(filename):
     df['since_last_visit_aisle2'] = (df['o_order_number'] - df['la2_max_order_number']).astype(np.float32)
     df['since_last_visit_depart2'] = (df['o_order_number'] - df['ld2_max_order_number']).astype(np.float32)
     ###
-    """
+
     df['user_avg_days_rate'] = (df['udd_avg_diffs'] / df['du_avg_diffs']).astype(np.float32)
     df['user_avg_days_rate_30'] = (df['udd3_avg_diffs'] / df['du3_avg_diffs']).astype(np.float32)
 
@@ -102,7 +102,6 @@ def read_csv(filename):
 
     df['item_days_diff'] = (df['since_last_order'] - df['di_avg_diffs']).astype(np.float32)
     df['item_days_diff_30'] = (df['since_last_order'] - df['di3_avg_diffs']).astype(np.float32)
-    """
 
     ###
     df['user_item_days_rate'] = (df['since_last_order'] / df['du_avg_diffs']).astype(np.float32)
@@ -131,6 +130,25 @@ def read_csv(filename):
     df['user_depart_days_diff_30'] = (df['since_last_depart'] - df['dd3_avg_diffs']).astype(np.float32)
     df['user_depart_days_diff_reordered_30'] = (df['since_last_depart'] - df['dddi3_avg_diffs']).astype(np.float32)
 
+    ###
+    df['u_u1_order_hour_of_day_diff'] = df['u_u1_avg_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['i_i1_order_hour_of_day_diff'] = df['i_i1_avg_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['ui_order_hour_of_day_diff'] = df['ui_avg_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['ui3_order_hour_of_day_diff'] = df['ui3_avg_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['ua_order_hour_of_day_diff'] = df['ua_avg_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['ud_order_hour_of_day_diff'] = df['ud_avg_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['la_order_hour_of_day_diff'] = df['la_o_order_hour_of_day'] - df['o_order_hour_of_day']
+    df['l2_order_hour_of_day_diff'] = df['l2_o_order_hour_of_day'] - df['o_order_hour_of_day']
+
+    df['u_u1_order_dow_diff'] = df['u_u1_avg_order_dow'] - df['o_order_dow']
+    df['i_i1_order_dow_diff'] = df['i_i1_avg_order_dow'] - df['o_order_dow']
+    df['ui_order_dow_diff'] = df['ui_avg_order_dow'] - df['o_order_dow']
+    df['ui3_order_dow_diff'] = df['ui3_avg_order_dow'] - df['o_order_dow']
+    df['ua_order_dow_diff'] = df['ua_avg_order_dow'] - df['o_order_dow']
+    df['ud_order_dow_diff'] = df['ud_avg_order_dow'] - df['o_order_dow']
+    df['la_order_dow_diff'] = df['la_o_order_dow'] - df['o_order_dow']
+    df['l2_order_dow_diff'] = df['l2_o_order_dow'] - df['o_order_dow']
+
     id_cols = [col for col in df.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_order_id', 'o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
@@ -152,7 +170,7 @@ def read_multi_csv(folder):
     logger.info('file_num: %s' % len(paths))
     df = None  # pd.DataFrame()
 
-    p = Pool(28)
+    p = Pool()
     df = pd.concat(p.map(read_csv, paths), ignore_index=True, copy=False)
     p.close()
     p.join()
@@ -190,6 +208,8 @@ def _join_data(df):
                   on='o_product_id', copy=False)
     df = df.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
                   on='o_user_id', copy=False)
+    df = df.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                  on='o_product_id', copy=False)
     logger.info('end')
     return df
 

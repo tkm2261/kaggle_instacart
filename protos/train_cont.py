@@ -1,4 +1,4 @@
-
+import re
 import pandas as pd
 import numpy as np
 import pickle
@@ -26,6 +26,9 @@ THRESH = 0.189
 
 list_idx = None
 
+DIR = 'result_tmp_cont/'
+IN_DIR = 'result_tmp/'
+
 
 def aaa(arg):
     return f1_score(*arg)
@@ -52,7 +55,7 @@ if __name__ == '__main__':
     logger.setLevel('INFO')
     logger.addHandler(handler)
 
-    handler = FileHandler('train_cont.py.log', 'a')
+    handler = FileHandler(DIR + 'train_cont.py.log', 'a')
     handler.setLevel(DEBUG)
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
@@ -62,34 +65,64 @@ if __name__ == '__main__':
                   'application': ['binary'],
                   'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
                   'min_child_weight': [10],
-                  'colsample_bytree': [0.7],
+                  'colsample_bytree': [0.9],
                   'subsample': [0.9],
                   'reg_alpha': [1],
                   'min_split_gain': [0],
+                  'max_bin': [511],
+                  'min_data_in_bin': [8],
                   'seed': [6436]
                   }
 
     logger.info('load start')
-
-    df = pd.read_csv('train_data_idx.csv')
-    ###
     x_train, y_train, cv = load_train_data()
 
-    fillna_mean = x_train.mean()
-    with open('fillna_mean.pkl', 'wb') as f:
-        pickle.dump(fillna_mean, f, -1)
-    x_train.fillna(fillna_mean, inplace=True)
-    x_train = x_train.values
-    #x_train[np.isnan(x_train)] = -100
+    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+
+    logger.info('merges')
+    #x_train['stack1'] = get_stack('result_0727/')
+    #init_score = np.log(init_score / (1 - init_score))
+
+    x_train = x_train.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                            on='o_product_id', copy=False)
+
+    id_cols = [col for col in x_train.columns.values
+               if re.search('_id$', col) is not None and
+               col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
+    logger.debug('id_cols {}'.format(id_cols))
+    x_train.drop(id_cols, axis=1, inplace=True)
+
+    dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
+    x_train.drop(dropcols, axis=1, inplace=True)
+
+    #cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
+    #cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
+    #cols_ = cols_['col'].values.tolist()[250:]
+    #dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
+    #x_train.drop(dropcols, axis=1, inplace=True)
+    usecols = x_train.columns.values
+    #logger.debug('all_cols {}'.format(usecols))
+    with open(DIR + 'usecols.pkl', 'wb') as f:
+        pickle.dump(usecols, f, -1)
     gc.collect()
+
+    fillna_mean = x_train.mean()
+    with open(DIR + 'fillna_mean.pkl', 'wb') as f:
+        pickle.dump(fillna_mean, f, -1)
+
+    x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
+    x_train[np.isnan(x_train)] = -100
+    x_train[np.isinf(x_train)] = -100
+
     logger.info("data size {}".format(x_train.shape))
     logger.info('load end')
+    gc.collect()
 
     min_score = (100, 100, 100)
     min_params = None
     #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
-
+    """
     for params in tqdm(list(ParameterGrid(all_params))):
 
         cnt = -1
@@ -100,9 +133,9 @@ if __name__ == '__main__':
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
             cnt += 1
-            with open('0719_new_feat_cont2/model2_%s.pkl' % cnt, 'rb') as f:
-                #booster = pickle.load(f).booster_
-                booster = pickle.load(f)
+            with open(IN_DIR + 'model_%s.pkl' % cnt, 'rb') as f:
+                booster = pickle.load(f).booster_
+                #booster = pickle.load(f)
 
             trn_x = x_train[train]
             val_x = x_train[test]
@@ -133,16 +166,16 @@ if __name__ == '__main__':
             else:
                 list_best_iter.append(params['n_estimators'])
 
-            with open('train_cv_pred2_%s.pkl' % cnt, 'wb') as f:
+            with open(DIR + 'train_cv_pred_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(pred, f, -1)
-            with open('model2_%s.pkl' % cnt, 'wb') as f:
+            with open(DIR + 'model_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(clf, f, -1)
             del trn_x
             del clf
             gc.collect()
             # break
 
-        with open('train_cv_tmp.pkl', 'wb') as f:
+        with open(DIR + 'train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
         logger.info('trees: {}'.format(list_best_iter))
         trees = np.mean(list_best_iter, dtype=int)
@@ -163,40 +196,63 @@ if __name__ == '__main__':
         logger.info('best score2: {} {}'.format(min_score2[use_score], min_score2))
         logger.info('best score3: {} {}'.format(min_score3[use_score], min_score3))
         logger.info('best_param: {}'.format(min_params))
-
+    """
+    for params in tqdm(list(ParameterGrid(all_params))):
+        min_params = params
     gc.collect()
     train_data = lgb.Dataset(x_train, label=y_train)
     logger.info('train start')
-    with open('0719_new_feat_cont2/model2.pkl', 'rb') as f:
-        #booster = pickle.load(f).booster_
-        booster = pickle.load(f)
+    with open(IN_DIR + 'model.pkl', 'rb') as f:
+        booster = pickle.load(f).booster_
+        #booster = pickle.load(f)
 
     clf = lgb.train(min_params,
                     train_data,
-                    10000,
+                    8000,
                     init_model=booster)
 
     logger.info('train end')
-    with open('model2.pkl', 'wb') as f:
+    with open(DIR + 'model.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
 
     ###
-    with open('model2.pkl', 'rb') as f:
+    with open(DIR + 'model.pkl', 'rb') as f:
         clf = pickle.load(f)
+    with open(DIR + 'usecols.pkl', 'rb') as f:
+        usecols = pickle.load(f)
     imp = pd.DataFrame(clf.feature_importance(), columns=['imp'])
+    imp['col'] = usecols
     n_features = imp.shape[0]
-    imp_use = imp[imp['imp'] > 0].sort_values('imp', ascending=False)
-    logger.info('imp use {} {}'.format(imp_use.shape, n_features))
-    with open('features_train.py', 'w') as f:
-        f.write('FEATURE = [' + ','.join(map(str, imp_use.index.values)) + ']\n')
+    imp = imp.sort_values('imp', ascending=False)
+    imp.to_csv(DIR + 'feature_importances.csv')
+    logger.info('imp use {} {}'.format(imp[imp.imp > 0].shape, n_features))
 
-    with open('fillna_mean.pkl', 'rb') as f:
+    with open(DIR + 'fillna_mean.pkl', 'rb') as f:
         fillna_mean = pickle.load(f)
 
     x_test = load_test_data()
-    x_test = x_test.fillna(fillna_mean).values
+    x_test = x_test.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                          on='o_product_id', copy=False)
+
+    id_cols = [col for col in x_test.columns.values
+               if re.search('_id$', col) is not None and
+               col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
+    logger.debug('id_cols {}'.format(id_cols))
+    x_test.drop(id_cols, axis=1, inplace=True)
+
+    logger.info('usecols')
+    # x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
+    # x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)
+
+    # x_test.drop(usecols, axis=1, inplace=True)
+    # x_test = x_test[FEATURE]
+
+    x_test = x_test[usecols]
+    gc.collect()
+    logger.info('values {} {}'.format(len(usecols), x_test.shape))
+    x_test.fillna(fillna_mean, inplace=True)
 
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
@@ -204,5 +260,5 @@ if __name__ == '__main__':
     _p_test = clf.predict(x_test)
     p_test = np.zeros((_p_test.shape[0], 2))
     p_test[:, 1] = _p_test
-    with open('test_tmp2.pkl', 'wb') as f:
+    with open(DIR + 'test_tmp.pkl', 'wb') as f:
         pickle.dump(p_test, f, -1)
