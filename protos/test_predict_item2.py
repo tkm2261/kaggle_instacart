@@ -15,8 +15,8 @@ logging.basicConfig(format=log_fmt, level=logging.DEBUG)
 
 def aaa(folder):
     t = time.time()
-    print('start', time.time() - t)
-    df = pd.read_csv(folder + 'test_data_idx.csv')
+    print('start', folder)
+    df = pd.read_csv('test_data_idx.csv').sort_values(['order_id', 'user_id', 'product_id'])
 
     with open(folder + 'test_tmp.pkl', 'rb') as f:
         pred = pickle.load(f)[:, 1]
@@ -24,8 +24,19 @@ def aaa(folder):
     df['pred'] = pred
     return df
 
+df = aaa('result_0731_recent_rate/')
+'''
+df = aaa('./result_0728_18000/')
+df1 = aaa('./result_0731_markov_cont8000/')
+df2 = aaa('./result_0731_allfeat/')
+df3 = aaa('./result_0730_markov/')
 
-df = aaa('./0714_10000loop/')
+df['pred'] = np.sum(np.vstack([df.pred.values * 3,
+                                df1.pred.values,
+                                df2.pred.values,
+                                df3.pred.values                             
+                                    ]), axis=0) / 6
+'''
 # df2 = aaa('./only_rebuy/')
 # df = df.append(df2)
 # df = df.groupby(['order_id', 'product_id', 'user_id']).max().reset_index()

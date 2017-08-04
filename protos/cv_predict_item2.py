@@ -24,8 +24,7 @@ def multilabel_fscore(y_true, y_pred):
     if precision + recall == 0:
         return 0
     return (2 * precision * recall) / (precision + recall)
-
-
+'''
 def aaa(folder):
     logging.info('enter' + folder)
     with open(folder + 'train_cv_pred_0.pkl', 'rb') as f:
@@ -33,10 +32,10 @@ def aaa(folder):
     # with open(folder + 'train_cv_tmp.pkl', 'rb') as f:
     #    pred = pickle.load(f)
 
-    df = pd.read_csv(folder + 'train_data_idx.csv')
+    df = pd.read_csv('train_data_idx.csv')
     df.drop('target', axis=1, inplace=True)
 
-    with open(folder + 'user_split.pkl', 'rb') as f:
+    with open('user_split.pkl', 'rb') as f:
         cv = pickle.load(f)
 
     user_ids = df['user_id']
@@ -74,7 +73,9 @@ logging.info('user mean')
 map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
 map_result = make_result()
 
-df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./result_0731_markov_cont8000/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+#df_val = aaa('./result_0730_markov/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val = aaa('./result_0728_18000/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 #df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
@@ -93,7 +94,7 @@ df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=
 # df_val.pred += df_val1.pred.values
 # df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-#df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values, df_val2.pred.values]), axis=0)
+#df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values]), axis=0)
 # df_val.pred = np.max(np.vstack([df_val.pred.values, df_val2.pred.values]), axis=0)
 
 
@@ -116,7 +117,7 @@ for i in tqdm(range(n)):
 
 with open('item_info.pkl', 'wb') as f:
     pickle.dump((map_pred, map_result), f, -1)
-
+'''
 
 with open('item_info.pkl', 'rb') as f:
     map_pred, map_result = pickle.load(f)
@@ -185,7 +186,11 @@ def _uuu(args):
     idx = max(0, idx)
     idx = min(len(items) - 1, idx)
     score = items[:idx + 1]
-    """
+    sc = multilabel_fscore(ans, score)
+
+    if preds.max() > 1:
+        print('AAAAA', order_id)
+
     label = best_idx
     data = [f1, idx, len(items), preds[idx], preds[min(idx + 1, len(items) - 1)], preds.sum(), preds.mean(), preds.min(), preds.max(),
             mean, std, map_user_order_num[user_id], map_reoder_rate[user_id]]
@@ -193,32 +198,27 @@ def _uuu(args):
     str_data = ",".join(map(str, data))
     with open('final_data/%s.csv' % order_id, 'w') as f:
         f.write(str_data + '\n')
-    """
-    """
-    if add_none(idx + 1, f1, 1):
-        if 'None' not in score:
-            score += ['None']
-    """
-    ans = map_result.get(order_id, ['None'])
+
     sc = multilabel_fscore(ans, score)
     # print(ans, score, f1, sc)
     return sc
 
+#map_user_mean_r = pd.read_csv('../input/user_mean_order_reordered.csv', index_col='user_id').to_dict('index')
 
 def uuu(args):
     order_id, vals = args
     items = [int(product_id) for product_id, _, _, _, _ in vals]
-    # preds = np.array([pred_val if items[i] in set_product else 0 for i, (_, pred_val, _, _, _) in enumerate(vals)])
     preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
     user_id = vals[0][4]
+    mean = vals[0][2]
 
     none_prob = (1 - preds).prod()  # min(1 - map_reoder_rate[user_id], (1 - preds).prod())
     preds = np.r_[preds, [none_prob]]
+
     items.append('None')
 
     idx = np.argsort(preds)[::-1]
     preds = preds[idx]
-
     items = [items[i] for i in idx]  # items[idx]
     none_idx = idx[-1]
     idxs = []
@@ -241,6 +241,7 @@ def uuu(args):
 
     # idx = int(np.around(np.mean(idxs)))
     score = items[:idx + 1]
+ 
     ans = map_result.get(order_id, ['None'])
     sc = multilabel_fscore(ans, score)
     # print(ans, score, f1, sc)
