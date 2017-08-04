@@ -77,11 +77,79 @@ def f1_opt(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds):
 @cython.wraparound(False)
 def f1(np.ndarray[long, ndim=1] _label, np.ndarray[double, ndim=1] _preds):
     return f1_opt(_label, _preds)
+    """
+    cdef long n = _preds.shape[0] + 1, none_idx
+    cdef np.ndarray[long, ndim= 1] label = np.zeros(n, dtype=np.int)
+    cdef np.ndarray[double, ndim= 1] preds = np.zeros(n, dtype=np.float)
 
+    label[:n - 1] = _label
+    preds[:n - 1] = _preds
+
+    preds[n - 1] = (1 - _preds).prod()
+    if _label.sum() == 0:
+        label[n - 1] = 1
+
+    cdef np.ndarray[long, ndim= 1] idx = np.argsort(preds)[::-1]
+    none_idx = idx[n - 1]
+    label = label[idx]
+    preds = preds[idx]
+    cdef np.ndarray[double, ndim= 1] scores = np.zeros(n)
+
+    cdef double tp = 0., _tp = 0
+    cdef double n_l = _preds.sum()
+    cdef long i
+    cdef double precision, recall, f1, score
+
+    score = -1
+    for i in range(n):
+        tp += preds[i]
+            
+        if tp > 0:
+            precision = tp / (i + 1)
+            recall = tp / n_l
+            f1 = (2 * precision * recall) / (precision + recall)
+        else:
+            f1 = 0
+        if f1 < score:
+            i = i - 1
+            break
+        score = f1
+    i = i - 1  # np.argsort(scores)[n - 1]
+
+    tp = label[:i + 1].sum()
+    if tp > 0:
+        precision = tp / (i + 1)
+        recall = tp / label.sum()
+        f1 = (2 * precision * recall) / (precision + recall)
+    else:
+        f1 = 0
+    return f1
+    """
+from multiprocessing import Pool
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def f1_group(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds, np.ndarray[long, ndim=1] group):
+    cdef int i, start, end, j, s
+    cdef double score = 0.
+    cdef long m = group.shape[0]
+    cdef long n = preds.shape[0]
+    start = 0
+
+    p = Pool()
+    list_p = []
+    for i in range(m):
+        end = start + group[i]
+        list_p.append(p.apply_async(f1_opt, (label[start:end], preds[start:end],)))
+        start = end
+    scores = [a.get() for a in list_p]
+    p.close()
+    p.join()
+    return np.mean(scores)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def f1_group2(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds, np.ndarray[long, ndim=1] group):
     cdef int i, start, end, j, s
     cdef double score = 0.
     cdef long m = group.shape[0]
