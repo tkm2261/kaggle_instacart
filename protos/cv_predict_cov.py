@@ -133,8 +133,24 @@ def add_none(num, sum_pred, safe):
 
 
 np.random.seed(0)
-NUM = 20000
-IS_COV = False
+NUM = 10000
+logging.info('NUM: {}'.format(NUM))
+
+ALPHA = sys.argv[1]
+ALPHA = float(ALPHA)
+#ALPHA = 0.2
+
+IS_COV = 0
+logging.info('ALPHA: {}, IS_COV: {}'.format(ALPHA, IS_COV))
+
+#ALPHA, IS_COV = sys.argv[1:3]
+#ALPHA = float(ALPHA)
+#IS_COV = int(IS_COV)
+
+ALPHA2 = 0.4 #sys.argv[1]
+ALPHA2 = float(ALPHA2)
+logging.info('ALPHA2: {}'.format(ALPHA2))
+
 with open('map_user_order_num.pkl', 'rb') as f:
     map_user_order_num = pickle.load(f)
 
@@ -149,11 +165,11 @@ set_product = set(df_a['product_id'].unique().tolist())
 
 def get_cov(user_id, items):
     n = len(items)
-    with open('../recommend/cov_data/%s.pkl' % user_id, 'rb') as f:
+    with open('../recommend/cov_data4/%s.pkl' % user_id, 'rb') as f:
         cov_data = pickle.load(f)
     idx = [cov_data.map_item2idx[i] for i in items]
     try:
-        tmp = cov_data.cov_matrix[idx, idx]
+        tmp = all_cov_data.cov_matrix[idx][:, idx]
     except:
         tmp = np.array([[1]])
     cov_matrix = np.zeros((n + 1, n + 1))
@@ -162,7 +178,6 @@ def get_cov(user_id, items):
     return cov_matrix
 
 
-ALPHA = 0.6
 from scipy.stats import norm
 logging.info('all cov')
 with open('../recommend/all_cov.pkl', 'rb') as f:
@@ -174,7 +189,7 @@ def get_all_cov(user_id, items):
     n = len(items)
     idx = [all_cov_data.map_item2idx[i] for i in items]
     try:
-        tmp = all_cov_data.cov_matrix[idx, idx]
+        tmp = all_cov_data.cov_matrix[idx][:, idx]
     except:
         tmp = np.array([[1]])
     cov_matrix = np.zeros((n + 1, n + 1))
@@ -183,10 +198,8 @@ def get_all_cov(user_id, items):
     return cov_matrix
 
 
-def get_y_true2(preds, none_idx, cov_matrix, order_num):
+def get_y_true2(preds, none_idx, cov_matrix):
     n = preds.shape[0]
-    a = 0.6
-    #cov_matrix = a * cov_matrix + (1 - a) * np.eye(n)
     tmp = np.random.multivariate_normal(np.zeros(n), cov_matrix, size=NUM)
     preds = np.array([norm.ppf(q=p, loc=0, scale=np.sqrt(cov_matrix[i, i])) for i, p in enumerate(preds)])
 
@@ -195,39 +208,71 @@ def get_y_true2(preds, none_idx, cov_matrix, order_num):
     y_true[:, none_idx] = np.where(y_true_sum == 0, True, False)
     return y_true
 
-
 def uuu(args):
     order_id, vals = args
-
-    preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
-    items = [int(product_id) for product_id, _, _, _, _ in vals]
     ans = map_result.get(order_id, ['None'])
-
+    
+    items = [int(product_id) for product_id, _, _, _, _ in vals]
+    preds = np.array([pred_val for _, pred_val, _, _, _ in vals])
     user_id = vals[0][4]
     n = preds.shape[0]
+    try:
+        if map_user_order_num[user_id] >= 10:
+            score = sampling(preds, items, user_id, alpha=ALPHA, is_all_conv=IS_COV)
+        else:
+            score = sampling(preds, items, user_id, alpha=ALPHA2, is_all_conv=0)
+    except:
+        score = expect(preds, items)
+        
+    sc = multilabel_fscore(ans, score)
+    # print(ans, score, f1, sc)
+    return sc
 
-    if map_user_order_num[user_id] >= 10:
-        a = 0.6
-        cov_matrix = get_cov(user_id, items) * a + (1 - a) * np.eye(n + 1)
-    else:
-        a = 0.3
-        cov_matrix = get_all_cov(user_id, items) * a + (1 - a) * np.eye(n + 1)
-        #ans = set(ans)
-        #label = np.array([1 if i in ans else 0 for i in items], dtype=np.int)
-        # return f1_score(label, preds)
-
+        
+def expect(preds, items):    
     none_prob = (1 - preds).prod()
     preds = np.r_[preds, [none_prob]]
     items.append('None')
 
     idx = np.argsort(preds)[::-1]
     preds = preds[idx]
+    items = [items[i] for i in idx]
+    
+    scores = []
+    num_y_true = preds.sum()
+    tp = 0
 
-    items = [items[i] for i in idx]  # items[idx]
+    for i in range(len(preds)):
+        tp += preds[i]
+        precision = tp / (i + 1)
+        recall = tp / num_y_true
+        f1 = (2 * precision * recall) / (precision + recall)
+        scores.append((f1, i))
+
+    f1, idx = max(scores, key=lambda x: x[0])
+    score = items[:idx + 1]
+    return score
+
+    
+def sampling(preds, items, user_id, alpha, is_all_conv=True):
+    n = preds.shape[0]
+    if is_all_conv:
+        cov_matrix = get_cov(user_id, items) * alpha + (1 - alpha) * get_all_cov(user_id, items) #np.eye(n + 1)
+    else:
+        cov_matrix = get_cov(user_id, items) * alpha + (1 - alpha) * np.eye(n + 1)
+
+    none_prob = (1 - preds).prod()
+    preds = np.r_[preds, [none_prob]]
+    items.append('None')
+        
+    idx = np.argsort(preds)[::-1]
+    preds = preds[idx]
+
+    items = [items[i] for i in idx]
     none_idx = idx[-1]
-    #sum_pred = preds.sum()
-
-    scenario = get_y_true2(preds, none_idx, cov_matrix, map_user_order_num[user_id])
+    cov_matrix = cov_matrix[idx][:, idx]
+    
+    scenario = get_y_true2(preds, none_idx, cov_matrix)
 
     num_y_true = scenario.sum(axis=1)
     scores = []
@@ -245,9 +290,7 @@ def uuu(args):
     f1, idx = max(scores, key=lambda x: x[0])
     score = items[:idx + 1]
 
-    sc = multilabel_fscore(ans, score)
-    # print(ans, score, f1, sc)
-    return sc
+    return score
 
 
 def sss2(map_pred):
