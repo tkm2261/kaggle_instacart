@@ -109,7 +109,8 @@ def aaa(folder):
     return df
 
 
-df = aaa('result_0803_1800/')
+df = aaa('result_0804_cont15500/')
+#df = aaa('result_0803_1800/')
 '''
 df = aaa('./result_0728_18000/')
 df1 = aaa('./result_0731_markov_cont8000/')

@@ -51,9 +51,9 @@ def read_csv(filename):
     normarize('i_i3_order_hour_of_day')
     normarize('i_i4_department_id')
 
-    drop('^u2_')
+    # drop('^u2_')
     gc.collect()
-    drop('^i2_')
+    # drop('^i2_')
 
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')

@@ -24,7 +24,8 @@ def multilabel_fscore(y_true, y_pred):
     if precision + recall == 0:
         return 0
     return (2 * precision * recall) / (precision + recall)
-'''
+
+
 def aaa(folder):
     logging.info('enter' + folder)
     with open(folder + 'train_cv_pred_0.pkl', 'rb') as f:
@@ -72,29 +73,30 @@ def make_result():
 logging.info('user mean')
 map_user_mean = pd.read_csv('../input/user_mean_order.csv', index_col='user_id').to_dict('index')
 map_result = make_result()
-
-#df_val = aaa('./result_0731_markov_cont8000/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val = aaa('./result_0730_markov/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-df_val = aaa('./result_0728_18000/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val = aaa('./result_0803/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+df_val1 = aaa('./result_0803_1800/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./result_0731_markov_cont8000/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./result_0730_markov/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./result_0728_18000/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val1 = aaa('./0705_new/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
-#df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./0710_stack2/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./0705_old_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-#df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./0715_2nd_order/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val1 = aaa('./0714_10000loop/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./0716_3rd_order_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val = aaa('./').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
 # df_val = aaa('./0706_tuned/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
-#df_val2 = aaa('./0708_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val1 = aaa('./0708_gpu_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
+# df_val2 = aaa('./0708_ids/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 # df_val = aaa('./0707_stack/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 # df_val.pred += df_val1.pred.values
 # df_val1 = aaa('./0705_new_rate001/').sort_values(['order_id', 'user_id', 'product_id'], ascending=False)
 
-#df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values]), axis=0)
+df_val['pred'] = np.mean(np.vstack([df_val.pred.values, df_val1.pred.values]), axis=0)
 # df_val.pred = np.max(np.vstack([df_val.pred.values, df_val2.pred.values]), axis=0)
 
 
@@ -117,7 +119,7 @@ for i in tqdm(range(n)):
 
 with open('item_info.pkl', 'wb') as f:
     pickle.dump((map_pred, map_result), f, -1)
-'''
+
 
 with open('item_info.pkl', 'rb') as f:
     map_pred, map_result = pickle.load(f)
@@ -203,7 +205,8 @@ def _uuu(args):
     # print(ans, score, f1, sc)
     return sc
 
-#map_user_mean_r = pd.read_csv('../input/user_mean_order_reordered.csv', index_col='user_id').to_dict('index')
+# map_user_mean_r = pd.read_csv('../input/user_mean_order_reordered.csv', index_col='user_id').to_dict('index')
+
 
 def uuu(args):
     order_id, vals = args
@@ -241,7 +244,7 @@ def uuu(args):
 
     # idx = int(np.around(np.mean(idxs)))
     score = items[:idx + 1]
- 
+
     ans = map_result.get(order_id, ['None'])
     sc = multilabel_fscore(ans, score)
     # print(ans, score, f1, sc)
