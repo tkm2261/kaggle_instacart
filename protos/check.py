@@ -24,7 +24,7 @@ from features_use import FEATURE
 now_order_ids = None
 THRESH = 0.189
 
-DIR = 'result_tmp/'
+DIR = 'result_0803_1800/'
 
 
 def aaa(arg):
@@ -71,23 +71,14 @@ if __name__ == '__main__':
     handler.setFormatter(log_fmt)
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
+    logger.info('load start')
+    x_train, y_train, cv = load_train_data()
 
     df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
-    ###
-    x_train, y_train, cv = load_train_data()
-    logger.info('merges')
-    x_train = x_train.merge(pd.read_csv('product_last.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('product_first.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('product_all.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
-    x_train = x_train.merge(pd.read_csv('word_preds.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-                            on='o_product_id', copy=True)
 
-    x_train = x_train.merge(pd.read_csv('user_item_pattern.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
-                            on='o_user_id', copy=True)
-    x_train['stack1'] = get_stack('result_0727/')
+    logger.info('merges')
+    #x_train['stack1'] = get_stack('result_0727/')
+    #init_score = np.log(init_score / (1 - init_score))
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -97,8 +88,25 @@ if __name__ == '__main__':
 
     dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     x_train.drop(dropcols, axis=1, inplace=True)
+    logger.info('drop')
+    usecols = x_train.columns.values
+    #logger.debug('all_cols {}'.format(usecols))
+    gc.collect()
+
+    #x_train.replace([np.inf, -np.inf], np.nan, inplace=True)
     fillna_mean = x_train.mean()
-    x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
+    x_train.fillna(fillna_mean, inplace=True)
+    x_train = x_train.values.astype(np.float32)
+
+    logger.info('data end')
+    # x_train[np.isnan(x_train)] = -10
+    gc.collect()
+    x_train[np.isnan(x_train)] = -100
+    x_train[np.isinf(x_train)] = 999
+
+    logger.info('load end {}'.format(x_train.shape))
+
+    ###
 
     gc.collect()
 
@@ -111,20 +119,26 @@ if __name__ == '__main__':
     list_idxs = []
     list_model = []
     list_data = []
-    for t, (train, test) in enumerate(cv[: 1]):
+    for t, (train, test) in enumerate(cv):
+        # if t < 2:
+        #    list_model.append(None)
+        #    list_idxs.append(None)
+        #    continue
         with open(DIR + 'model_%s.pkl' % t, 'rb') as f:
             list_model += [pickle.load(f)]
         list_idxs.append(df.loc[test].reset_index(drop=True).groupby(
             'order_id').apply(lambda x: x.index.values).tolist())
         # list_data.append((trn_x, val_x, trn_y, val_y))
-
+        break
     gc.collect()
 
-    for i in range(500, 11001, 100):
+    for i in range(1000, 20000, 1000):
         list_score = []
         all_pred = np.zeros(y_train.shape[0])
         # for t, (trn_x, val_x, trn_y, val_y) in enumerate(list_data):
-        for t, (train, test) in enumerate(cv[:1]):
+        for t, (train, test) in enumerate(cv):
+            # if t < 2:
+            #    continue
             trn_x = x_train[train]
             val_x = x_train[test]
             trn_y = y_train[train]
@@ -132,10 +146,11 @@ if __name__ == '__main__':
 
             list_idx = list_idxs[t]
             clf = list_model[t]
-            pred = clf.predict_proba(val_x, num_iteration=i)[:, 1]
+            #pred = clf.predict_proba(val_x, num_iteration=i)[:, 1]
+            pred = clf.predict(val_x, num_iteration=i)
             _, _score, _ = f1_metric(val_y, pred, list_idx)
             list_score.append(_score)
-
+            break
         # with open('train_cv_tmp.pkl', 'wb') as f:
         #    pickle.dump(all_pred, f, -1)
 

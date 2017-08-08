@@ -190,11 +190,9 @@ def uuu(args):
     preds = preds[idx]
     items = [items[i] for i in idx]  # items[idx]
     user_id = vals[0][4]
-    a = 0.9
-    if map_user_order_num[user_id] >= 10:
-        cov_matrix = get_cov(user_id, items)
-    else:
-        cov_matrix = get_all_cov(items)  # + get_cov(user_id, items) * a + (1 - a) * np.eye(n)
+    a = 0.6
+    n = len(items)
+    cov_matrix = get_all_cov(items) * a + (1 - a) * np.eye(n)
     try:
         scenario = get_y_true2(preds, cov_matrix)
         preds2 = scenario.mean(axis=0)

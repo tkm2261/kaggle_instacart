@@ -32,7 +32,7 @@ def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1, f1_group, f1_group_idx
+from utils import f1, f1_group  # , f1_group_idx
 
 DIR = 'result_tmp/'
 
@@ -89,6 +89,9 @@ def f1_metric_xgb2(pred, dtrain):
     return 'f12', pred, True
 
 
+import time
+
+
 def callback(data):
     if (data.iteration + 1) % 100 != 0:
         return
@@ -111,70 +114,16 @@ def callback(data):
     """
     preds = [ele[2] for ele in clf.eval_valid(f1_metric_xgb2) if ele[1] == 'f12'][0]
     labels = val_data.get_label().astype(np.int)
+    t = time.time()
     res = f1_group(labels, preds, list_idx)
     sc = np.mean(res)
 
-    logger.info('cal [{}] {}'.format(data.iteration + 1, sc))
+    logger.info('cal [{}] {} {}'.format(data.iteration + 1, sc, time.time() - t))
 
 
-if __name__ == '__main__':
-
-    from logging import StreamHandler, DEBUG, Formatter, FileHandler
-
-    log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
-    handler = StreamHandler()
-    handler.setLevel('INFO')
-    handler.setFormatter(log_fmt)
-    logger.addHandler(handler)
-
-    handler = FileHandler(DIR + 'train.py.log', 'a')
-    handler.setLevel(DEBUG)
-    handler.setFormatter(log_fmt)
-    logger.setLevel(DEBUG)
-    logger.addHandler(handler)
-    """
-    all_params = {'max_depth': [7],
-                  'learning_rate': [0.1],  # [0.06, 0.1, 0.2],
-                  'n_estimators': [1000],
-                  'min_data_in_leaf': [10],
-                  'feature_fraction': [0.8],
-                  #'boosting_type': ['rf'],  # ['gbdt'],
-                  #'xgboost_dart_mode': [False],
-                  'num_leaves': [255],
-                  'bagging_fraction': [0.9],
-                  #'min_child_samples': [10],
-                  'lambda_l1': [1, 0],
-                  #'lambda_l2 ': [1, 0],
-                  #'max_bin': [127],
-                  #'min_sum_hessian_in_leaf': [0, 0.01],
-                  #'min_gain_to_split': [0, 0.1, 0.01],
-                  #'min_data_in_bin': [1, 3, 5, 10],
-                  'silent': [True],
-                  'seed': [114514]
-                  }
-    """
-
-    all_params = {'min_child_weight': [10],
-                  'subsample': [0.7],
-                  'seed': [114514],
-                  'n_estimators': [13000],
-                  'colsample_bytree': [0.9],
-                  'silent': [True],
-                  'learning_rate': [0.01],
-                  'max_depth': [5],
-                  'min_data_in_bin': [8],
-                  'min_split_gain': [0],
-                  'reg_alpha': [1],
-                  'max_bin': [511],
-                  #'objective': [cst_obj],
-                  #'objective': ['xentropy'],
-                  #'metric_freq': [100]
-                  }
-
+def load():
     logger.info('load start')
     x_train, y_train, cv = load_train_data()
-
-    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
 
     logger.info('merges')
     #x_train['stack1'] = get_stack('result_0727/')
@@ -205,6 +154,7 @@ if __name__ == '__main__':
     gc.collect()
 
     #x_train.replace([np.inf, -np.inf], np.nan, inplace=True)
+
     fillna_mean = x_train.mean()
     with open(DIR + 'fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
@@ -218,6 +168,56 @@ if __name__ == '__main__':
     x_train[np.isinf(x_train)] = 999
 
     logger.info('load end {}'.format(x_train.shape))
+    return x_train, y_train, cv
+
+
+if __name__ == '__main__':
+
+    from logging import StreamHandler, DEBUG, Formatter, FileHandler
+
+    log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
+    handler = StreamHandler()
+    handler.setLevel('INFO')
+    handler.setFormatter(log_fmt)
+    logger.addHandler(handler)
+
+    handler = FileHandler(DIR + 'train.py.log', 'a')
+    handler.setLevel(DEBUG)
+    handler.setFormatter(log_fmt)
+    logger.setLevel(DEBUG)
+    logger.addHandler(handler)
+
+    all_params = {'min_child_weight': [10],
+                  'subsample': [0.7],
+                  'seed': [114514],
+                  'n_estimators': [15500],
+                  'colsample_bytree': [0.9],
+                  'silent': [True],
+                  'learning_rate': [0.01],
+                  'max_depth': [5],
+                  'min_data_in_bin': [8],
+                  'min_split_gain': [0],
+                  'reg_alpha': [1],
+                  'max_bin': [511],
+                  #'objective': [cst_obj],
+                  #'objective': ['xentropy'],
+                  #'metric_freq': [100]
+                  }
+
+    x_train, y_train, cv = load()
+    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    with open(DIR + 'usecols.pkl', 'rb') as f:
+        usecols = pickle.load(f)
+    logger.info('dump start')
+    with open('train_0803.pkl', 'wb') as f:
+        pickle.dump((x_train, y_train, cv), f, -1)
+    logger.info('dump end')
+    """
+    logger.info('load start')
+    with open('train_0803.pkl', 'rb') as f:
+        x_train, y_train, cv = pickle.load(f)
+    """
+    logger.info('load end')
 
     min_score = (100, 100, 100)
     min_params = None

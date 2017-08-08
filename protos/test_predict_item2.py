@@ -24,7 +24,8 @@ def aaa(folder):
     df['pred'] = pred
     return df
 
-df = aaa('result_0731_recent_rate/')
+
+df = aaa('result_0803/')
 '''
 df = aaa('./result_0728_18000/')
 df1 = aaa('./result_0731_markov_cont8000/')

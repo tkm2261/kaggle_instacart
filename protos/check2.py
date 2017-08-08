@@ -81,8 +81,8 @@ if __name__ == '__main__':
     #x_train['stack1'] = get_stack('result_0727/')
     #init_score = np.log(init_score / (1 - init_score))
 
-    #x_train = x_train.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
-    #                        on='o_product_id', copy=False)
+    x_train = x_train.merge(pd.read_csv('markov.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                            on='o_product_id', copy=False)
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -93,23 +93,9 @@ if __name__ == '__main__':
     dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     x_train.drop(dropcols, axis=1, inplace=True)
 
-    #cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
-    #cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
-    #cols_ = cols_['col'].values.tolist()[250:]
-    #dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
-    #x_train.drop(dropcols, axis=1, inplace=True)
     usecols = x_train.columns.values
-    #logger.debug('all_cols {}'.format(usecols))
-    with open('result_0728_18000/usecols.pkl', 'rb') as f:
-        usecols = pickle.load(f)
-    x_train = x_train[usecols]
-    with open(DIR + 'usecols.pkl', 'wb') as f:
-        pickle.dump(usecols, f, -1)
-    gc.collect()
-    
+
     fillna_mean = x_train.mean()
-    with open(DIR + 'fillna_mean.pkl', 'wb') as f:
-        pickle.dump(fillna_mean, f, -1)
 
     x_train = x_train.fillna(fillna_mean).values.astype(np.float32)
     x_train[np.isnan(x_train)] = -100
@@ -127,7 +113,7 @@ if __name__ == '__main__':
     for t, (train, test) in enumerate(cv):
         if t < 2:
             list_idxs.append(None)
-            list_model.append(None)            
+            list_model.append(None)
             continue
         with open(DIR + 'model_%s.pkl' % t, 'rb') as f:
             list_model += [pickle.load(f)]
@@ -137,7 +123,7 @@ if __name__ == '__main__':
         break
     gc.collect()
 
-    for i in range(8000, 12000, 1000):
+    for i in range(8000, 20000, 1000):
         list_score = []
         all_pred = np.zeros(y_train.shape[0])
         # for t, (trn_x, val_x, trn_y, val_y) in enumerate(list_data):
@@ -155,7 +141,7 @@ if __name__ == '__main__':
             _, _score, _ = f1_metric(val_y, pred, list_idx)
             list_score.append(_score)
             break
-        #with open(DIR + 'train_cv_pred_%s_%s.pkl' % (i, t), 'wb') as f:
+        # with open(DIR + 'train_cv_pred_%s_%s.pkl' % (i, t), 'wb') as f:
         #    pickle.dump(pred, f, -1)
 
         logger.info('{} {} {}'.format(i, list_score, np.mean(list_score)))

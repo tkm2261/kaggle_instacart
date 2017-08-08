@@ -28,7 +28,7 @@ def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1
+from utils import f1, f1_group_idx
 
 
 def f1_metric(label, pred):
@@ -65,16 +65,23 @@ def hoge(data):
     y_train = np.random.random(1000) > 0.8
     #val_data = clf.valid_sets[0]
     # trn_data.set_weight(weight)
-    trn_data.set_field('weight', weight)
+    #trn_data.set_field('weight', weight)
 
     # trn_data.set_label(y_train)
     # print(trn_data.get_weight())
-    clf.set_train_set(trn_data)
+    # clf.set_train_set(trn_data)
 
 
 if __name__ == '__main__':
 
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
+
+    np.random.seed()
+    label = np.array(np.random.random(10) > 0.5, dtype=np.int)
+    pred = np.random.random(10)
+    group = np.array([3, 3, 1], dtype=np.int)
+    f1_group_idx(label, pred, group)
+    exit()
 
     log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
     handler = StreamHandler()
