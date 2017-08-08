@@ -183,13 +183,27 @@ def load_train_data():
     ).tocsr()
     logger.info('load A data')
     A = spMat.hstack([A_user, A_item, A_aisle, A_depart])
+
+    del A_user
+    del A_item
+    del A_aisle
+    del A_depart
+    gc.collect()
     logger.info('stack A data')
     with open('fm_data/user_item.pkl', 'rb') as f:
         A1 = pickle.load(f).tocsr()[df["user_id"].values, :]
-    #with open('fm_data/item_user.pkl', 'rb') as f:
-    #    A2 = pickle.load(f).tocsr()[df["product_id"].values, :]
+    gc.collect()
+    """
+    logger.info('stack A1 data')    
+    with open('fm_data/item_user.pkl', 'rb') as f:
+        A2 = pickle.load(f).tocsr()[df["product_id"].values, :]
+    gc.collect()
+    """
+    logger.info('stack A2 data')        
     with open('fm_data/user_aisle.pkl', 'rb') as f:
         A3 = pickle.load(f).tocsr()[df["user_id"].values, :]
+    gc.collect()
+    logger.info('stack A3 data')        
     with open('fm_data/user_depart.pkl', 'rb') as f:
         A4 = pickle.load(f).tocsr()[df["user_id"].values, :]
     logger.info('load As data')
@@ -245,17 +259,26 @@ def load_test_data():
     ).tocsr()
 
     A = spMat.hstack([A_user, A_item, A_aisle, A_depart])
-    
+    del A_user
+    del A_item
+    del A_aisle
+    del A_depart
+    gc.collect()
     with open('fm_data/user_item.pkl', 'rb') as f:
         A1 = pickle.load(f).tocsr()[df["user_id"].values, :]
+    gc.collect()
+    """
     with open('fm_data/item_user.pkl', 'rb') as f:
         A2 = pickle.load(f).tocsr()[df["product_id"].values, :]
+    gc.collect()
+    """
     with open('fm_data/user_aisle.pkl', 'rb') as f:
         A3 = pickle.load(f).tocsr()[df["user_id"].values, :]
+    gc.collect()
     with open('fm_data/user_depart.pkl', 'rb') as f:
         A4 = pickle.load(f).tocsr()[df["user_id"].values, :]
 
-    A = spMat.hstack([A, A1, A2, A3, A4])
+    A = spMat.hstack([A, A1, A3, A4])
 
     with open('fm_data/test_data.pkl', 'wb') as f:
         pickle.dump(A, f, -1)
@@ -300,10 +323,12 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     logger.info('load start')
-    make_data()
+    #make_data()
 
-    x_train, y_train, cv = load_train_data()
-    exit()
+    #x_train, y_train, cv = load_train_data()
+    with open('fm_data/train_data.pkl', 'rb') as f:
+        x_train, y_train, cv = pickle.load(f)
+    x_train = x_train.tocsr()
     df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
 
 
@@ -311,8 +336,10 @@ if __name__ == '__main__':
     min_params = None
     # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
-
+    logger.info('load end {}'.format(x_train.shape))
     #for params in tqdm(list(ParameterGrid(all_params))):
+
+    gc.collect()
     if 1:
         cnt = -1
         list_score = []
@@ -321,8 +348,11 @@ if __name__ == '__main__':
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
             cnt += 1
-            trn_x = x_train[train]
-            val_x = x_train[test]
+            idx = np.arange(x_train.shape[0], dtype=int)
+            _train = idx[train]
+            _test = idx[test]            
+            trn_x = x_train[_train, :]
+            val_x = x_train[_test, :]
             trn_y = y_train[train]
             val_y = y_train[test]
 
@@ -333,7 +363,7 @@ if __name__ == '__main__':
             clf = TFFMClassifier(order=2,
                                  rank=10,
                                      optimizer=tf.train.AdamOptimizer(learning_rate=0.01),
-                                     n_epochs=50,
+                                     n_epochs=100,
                                      batch_size=100000,
                                      init_std=0.001,
                                      input_type='sparse'
@@ -353,13 +383,14 @@ if __name__ == '__main__':
 
             with open(DIR + 'train_cv_pred_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(pred, f, -1)
+            """
             with open(DIR + 'model_%s.pkl' % cnt, 'wb') as f:
                 pickle.dump(clf, f, -1)
-
+            """
             del trn_x
             del clf
             gc.collect()
-            break
+            #break
         with open(DIR + 'train_cv_tmp.pkl', 'wb') as f:
             pickle.dump(all_pred, f, -1)
 
