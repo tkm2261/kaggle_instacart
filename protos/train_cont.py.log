@@ -1,0 +1,42 @@
+2017-07-18 05:09:53,448 root 72 [INFO][<module>] load start 
+2017-07-18 05:09:57,148 load_data 118 [INFO][load_train_data] enter 
+2017-07-18 05:09:57,148 load_data 121 [INFO][load_train_data] using seriarized data 
+2017-07-18 05:10:11,934 load_data 124 [INFO][load_train_data] using seriarized data2 
+2017-07-18 05:11:56,153 root 85 [INFO][<module>] data size (8474661, 374) 
+2017-07-18 05:11:56,153 root 86 [INFO][<module>] load end 
+2017-07-18 07:22:34,904 root 126 [DEBUG][<module>]    _score: 0.39945838004 
+2017-07-18 09:30:56,861 root 126 [DEBUG][<module>]    _score: 0.398198961052 
+2017-07-18 11:38:45,187 root 126 [DEBUG][<module>]    _score: 0.395707605127 
+2017-07-18 13:50:50,715 root 126 [DEBUG][<module>]    _score: 0.399169325743 
+2017-07-18 16:07:16,697 root 126 [DEBUG][<module>]    _score: 0.398409045717 
+2017-07-18 16:07:22,746 root 146 [INFO][<module>] trees: [0, 0, 0, 0, 0] 
+2017-07-18 16:07:22,747 root 152 [INFO][<module>] param: {'learning_rate': 0.01, 'colsample_bytree': 0.7, 'seed': 6436, 'max_depth': 5, 'max_bin': 255, 'verbose': 1, 'min_split_gain': 0, 'reg_alpha': 1, 'subsample': 0.9, 'min_child_weight': 10, 'application': 'binary'} 
+2017-07-18 16:07:22,747 root 153 [INFO][<module>] loss: 0.2429264167886104 (avg min max (0.24292641678861041, 0.24205724568080428, 0.24421716196684212)) 
+2017-07-18 16:07:22,747 root 154 [INFO][<module>] score: -0.8376913921610422 (avg min max (-0.83769139216104216, -0.83834190123774999, -0.83638743213691047)) 
+2017-07-18 16:07:22,747 root 155 [INFO][<module>] score3: 0.39818866353577376 (avg min max (-0.83769139216104216, -0.83834190123774999, -0.83638743213691047)) 
+2017-07-18 16:07:22,747 root 161 [INFO][<module>] best score: 0.2429264167886104 (0.24292641678861041, 0.24205724568080428, 0.24421716196684212) 
+2017-07-18 16:07:22,747 root 162 [INFO][<module>] best score2: -0.8376913921610422 (-0.83769139216104216, -0.83834190123774999, -0.83638743213691047) 
+2017-07-18 16:07:22,748 root 163 [INFO][<module>] best score3: 0.39818866353577376 (0.39818866353577376, 0.39570760512721531, 0.39945838004007644) 
+2017-07-18 16:07:22,748 root 164 [INFO][<module>] best_param: {'learning_rate': 0.01, 'colsample_bytree': 0.7, 'seed': 6436, 'max_depth': 5, 'max_bin': 255, 'verbose': 1, 'min_split_gain': 0, 'reg_alpha': 1, 'subsample': 0.9, 'min_child_weight': 10, 'application': 'binary'} 
+2017-07-18 16:07:22,801 root 168 [INFO][<module>] train start 
+2017-07-18 17:38:22,093 root 72 [INFO][<module>] load start 
+2017-07-18 17:38:25,920 load_data 118 [INFO][load_train_data] enter 
+2017-07-18 17:38:25,920 load_data 121 [INFO][load_train_data] using seriarized data 
+2017-07-18 17:38:57,143 load_data 124 [INFO][load_train_data] using seriarized data2 
+2017-07-18 17:40:41,823 root 85 [INFO][<module>] data size (8474661, 374) 
+2017-07-18 17:40:41,824 root 86 [INFO][<module>] load end 
+2017-07-18 17:40:41,860 root 170 [INFO][<module>] train start 
+2017-07-18 20:20:29,158 root 178 [INFO][<module>] train end 
+2017-07-18 20:20:52,263 root 190 [INFO][<module>] imp use (353, 1) 374 
+2017-07-18 20:20:52,265 load_data 196 [INFO][load_test_data] enter 
+2017-07-18 20:20:52,265 load_data 199 [INFO][load_test_data] using seriarized data 
+2017-07-18 20:23:08,738 root 202 [INFO][<module>] train end 
+2017-07-19 04:32:13,909 root 72 [INFO][<module>] load start 
+2017-07-19 04:32:17,746 load_data 118 [INFO][load_train_data] enter 
+2017-07-19 04:32:17,746 load_data 121 [INFO][load_train_data] using seriarized data 
+2017-07-19 04:34:18,812 load_data 124 [INFO][load_train_data] using seriarized data2 
+2017-07-19 04:36:03,391 root 85 [INFO][<module>] data size (8474661, 374) 
+2017-07-19 04:36:03,391 root 86 [INFO][<module>] load end 
+2017-07-31 02:06:10,743 root 72 [INFO][<module>] load start 
+2017-07-31 02:06:16,622 load_data 198 [INFO][load_train_data] enter 
+2017-07-31 02:06:16,624 load_data 201 [INFO][load_train_data] using seriarized data 

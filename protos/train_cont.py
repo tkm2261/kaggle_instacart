@@ -27,14 +27,14 @@ THRESH = 0.189
 list_idx = None
 
 DIR = 'result_tmp_cont/'
-IN_DIR = 'result_0803_1800/'
+IN_DIR = 'result_tmp/'
 
 
 def aaa(arg):
     return f1_score(*arg)
 
 
-from utils import f1, f1_group  # , f1_group_idx
+from utils import f1, f1_group, f1_group_idx, f1_group_sc
 
 
 def f1_metric(label, pred):
@@ -51,15 +51,15 @@ def dummy(label, pred):
 def cst_obj(label, preds):
     label = np.where(label > 0, 1, -1)
     preds = 1.0 / (1.0 + np.exp(-preds))
-    #res = f1_group_idx(label, preds, list_idx).astype(np.bool)
+    # res = f1_group_idx(label, preds, list_idx).astype(np.bool)
     response = - label / (1.0 + np.exp(1.0 + label * preds))
     grad = response
     abs_response = np.fabs(response)
     hess = abs_response * (1 - abs_response)
-    #grad[res] *= 0.8
-    #grad[~res] *= 1.2
-    #grad = preds - label
-    #hess = preds * (1.0 - preds)
+    # grad[res] *= 0.8
+    # grad[~res] *= 1.2
+    # grad = preds - label
+    # hess = preds * (1.0 - preds)
 
     return grad, hess
 
@@ -93,28 +93,21 @@ import time
 
 
 def callback(data):
-    logger.info('%s' % (data.iteration + 1))
-    return
-
-    if (data.iteration + 1) % 100 != 0:
+    if (data.iteration + 1) % 500 != 0:
         return
 
     clf = data.model
     trn_data = clf.train_set
     val_data = clf.valid_sets[0]
-    """
+    '''
     preds = [ele[2] for ele in clf.eval_train(f1_metric_xgb2) if ele[1] == 'f12'][0]
     labels = trn_data.get_label().astype(np.int)
 
-    res = f1_group_idx(labels, preds, list_idx).astype(np.bool)
-    weight = trn_data.get_weight()
-    if weight is None:
-        weight = np.ones(preds.shape[0])
-    weight[res] *= 0.8
-    weight[~res] *= 1.25
+    res, sc = f1_group_sc(labels, preds, list_idx)  # .astype(np.bool)
+    weight = np.where(res > sc, 1, 1 + (sc - res) * 100)
 
     trn_data.set_weight(weight)
-    """
+    '''
     preds = [ele[2] for ele in clf.eval_valid(f1_metric_xgb2) if ele[1] == 'f12'][0]
     labels = val_data.get_label().astype(np.int)
     t = time.time()
@@ -129,8 +122,8 @@ def load():
     x_train, y_train, cv = load_train_data()
 
     logger.info('merges')
-    #x_train['stack1'] = get_stack('result_0727/')
-    #init_score = np.log(init_score / (1 - init_score))
+    # x_train['stack1'] = get_stack('result_0727/')
+    # init_score = np.log(init_score / (1 - init_score))
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -141,27 +134,116 @@ def load():
     dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     x_train.drop(dropcols, axis=1, inplace=True)
     logger.info('drop')
-    #cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
-    #cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
-    #cols_ = cols_['col'].values.tolist()[250:]
-    #dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
-    #x_train.drop(dropcols, axis=1, inplace=True)
 
-    #imp = pd.read_csv('result_0731_xentropy/feature_importances.csv')['col'].values
-    #x_train = x_train[imp]
+    x_train = x_train.merge(pd.read_csv('user_reorder_item_num.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}), how='left',
+                            on='o_user_id', copy=False)
 
-    usecols = x_train.columns.values
-    #logger.debug('all_cols {}'.format(usecols))
-    with open(DIR + 'usecols.pkl', 'wb') as f:
-        pickle.dump(usecols, f, -1)
+    x_train = x_train.merge(pd.read_csv('item_reorder_user_num.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                            on='o_product_id', copy=False)
+
+    x_train = x_train.merge(pd.read_csv('item_reorder_user_num_train.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                            on='o_product_id', copy=False)
+
+    x_train = x_train.merge(pd.read_csv('item_reorder_train.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id'}), how='left',
+                            on='o_product_id', copy=False)
+
     gc.collect()
 
-    #x_train.replace([np.inf, -np.inf], np.nan, inplace=True)
+    # x_train.replace([np.inf, -np.inf], np.nan, inplace=True)
+    usecols = x_train.columns.values
+
+    with open(DIR + 'usecols.pkl', 'wb') as f:
+        pickle.dump(usecols, f, -1)
 
     fillna_mean = x_train.mean()
     with open(DIR + 'fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
     x_train.fillna(fillna_mean, inplace=True)
+    return x_train, y_train, cv
+
+
+if __name__ == '__main__':
+
+    from logging import StreamHandler, DEBUG, Formatter, FileHandler
+
+    log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
+    handler = StreamHandler()
+    handler.setLevel('INFO')
+    handler.setFormatter(log_fmt)
+    logger.addHandler(handler)
+
+    handler = FileHandler(DIR + 'train_cont.py.log', 'a')
+    handler.setLevel(DEBUG)
+    handler.setFormatter(log_fmt)
+    logger.setLevel(DEBUG)
+    logger.addHandler(handler)
+
+    all_params = {'min_child_weight': [10],
+                  'subsample': [0.7],
+                  'seed': [114],
+                  'application': ['binary'],
+                  'colsample_bytree': [0.9],
+                  'verbose': [0],
+                  'learning_rate': [0.01],
+                  'max_depth': [5],
+                  'min_data_in_bin': [8],
+                  'min_split_gain': [0],
+                  'reg_alpha': [1],
+                  'max_bin': [511]
+                  }
+
+    '''
+    logger.info('load start')
+    with open('train_0803.pkl', 'rb') as f:
+        x_train, y_train, cv = pickle.load(f)
+    logger.info('load end')
+    """
+    fillna_mean = x_train.mean()
+    with open(DIR + 'fillna_mean.pkl', 'wb') as f:
+        pickle.dump(fillna_mean, f, -1)
+    """
+
+    with open('result_0804_cont15500/' + 'usecols.pkl', 'rb') as f:
+        usecols = pickle.load(f)
+    x_train = x_train[usecols]
+
+    x_train = x_train.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('user_word_avg.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('aisle_fund.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                            how='left',
+                            on=['p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('department_fund.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                            how='left',
+                            on=['p_department_id'], copy=False)
+
+    logger.info('imba start')
+    with open('imba_train.pkl', 'rb') as f:
+        df = pickle.load(f).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id',
+                                            'aisle_id': 'p_aisle_id', 'department_id': 'p_department_id'})
+
+    df.drop(['add_to_cart_order_inverted_median', 'reordered', 'user_median_days_since_prior', 'days_since_prior_order_median', 'eval_set', 'product_name',
+             'order_hour_of_day_median', 'order_dow_median', 'up_median_cart_position', 'add_to_cart_order_relative_median', 'order_id'], axis=1, inplace=True)
+    df.columns = [str(col) + '_imba' if col not in {'o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'}
+                  else col for col in df.columns.values]
+    x_train = x_train.merge(df.astype(np.float32),
+                            how='left',
+                            on=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'], copy=False)
+
+    logger.info('imba end')
+
+    x_train.drop('o_user_id', axis=1, inplace=True)
+
+    usecols = x_train.columns.values
+    with open(DIR + 'usecols.pkl', 'wb') as f:
+        pickle.dump(usecols, f, -1)
+    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    logger.info('load end')
+
     x_train = x_train.values.astype(np.float32)
 
     logger.info('data end')
@@ -171,61 +253,11 @@ def load():
     x_train[np.isinf(x_train)] = 999
 
     logger.info('load end {}'.format(x_train.shape))
-    return x_train, y_train, cv
-
-
-if __name__ == '__main__':
-
-    from logging import StreamHandler, DEBUG, Formatter, FileHandler
-
-    log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
-
-    handler = StreamHandler()
-    handler.setLevel('INFO')
-    handler.setFormatter(log_fmt)
-    logger.setLevel('INFO')
-    logger.addHandler(handler)
-
-    handler = FileHandler(DIR + 'train_cont.py.log', 'a')
-    handler.setLevel(DEBUG)
-    handler.setFormatter(log_fmt)
-    logger.setLevel(DEBUG)
-    logger.addHandler(handler)
-    with open(IN_DIR + 'model.pkl', 'rb') as f:
-        _ = pickle.load(f)
-
-    all_params = {'max_depth': [5],
-                  'application': ['binary'],
-                  'learning_rate': [0.01],  # [0.06, 0.1, 0.2],
-                  'min_child_weight': [10, 20],
-                  'colsample_bytree': [0.9, 0.8],
-                  'subsample': [0.7],
-                  'reg_alpha': [1],
-                  'min_split_gain': [0, 0.001],
-                  'max_bin': [511],
-                  'min_data_in_bin': [8, 5],
-                  'verbose': [0],
-                  'seed': [6436]
-                  }
-
-    #x_train, y_train, cv = load()
-    #logger.info('dump start')
-    # with open('train_0803.pkl', 'wb') as f:
-    #    pickle.dump((x_train, y_train, cv), f, -1)
-    #logger.info('dump end')
-
-    logger.info('load start')
-    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
-    with open('train_0803.pkl', 'rb') as f:
-        x_train, y_train, cv = pickle.load(f)
-    with open(DIR + 'usecols.pkl', 'rb') as f:
-        usecols = pickle.load(f)
-    gc.collect()
 
     logger.info('load end')
     min_score = (100, 100, 100)
     min_params = None
-    #cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
+    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=871)
     use_score = 0
 
     for params in tqdm(list(ParameterGrid(all_params))):
@@ -238,9 +270,11 @@ if __name__ == '__main__':
         all_pred = np.zeros(y_train.shape[0])
         for train, test in cv:
             cnt += 1
+
             with open(IN_DIR + 'model_%s.pkl' % cnt, 'rb') as f:
-                #booster = pickle.load(f).booster_
-                booster = pickle.load(f)
+                booster = pickle.load(f).booster_
+                #booster = pickle.load(f)
+
             trn_x = x_train[train]
             val_x = x_train[test]
             trn_y = y_train[train]
@@ -255,10 +289,11 @@ if __name__ == '__main__':
 
             clf = lgb.train(params,
                             train_data,
-                            2000,
+                            5000,
                             valid_sets=[test_data],
                             callbacks=[callback],
-                            init_model=booster)
+                            init_model=booster
+                            )
             pred = clf.predict(val_x)
             all_pred[test] = pred
 
@@ -311,12 +346,12 @@ if __name__ == '__main__':
     train_data = lgb.Dataset(x_train, label=y_train)
     logger.info('train start')
     with open(IN_DIR + 'model.pkl', 'rb') as f:
-        #booster = pickle.load(f).booster_
-        booster = pickle.load(f)
+        booster = pickle.load(f).booster_
+        #booster = pickle.load(f)
 
     clf = lgb.train(min_params,
                     train_data,
-                    700,
+                    5000,
                     init_model=booster)
 
     logger.info('train end')
@@ -324,7 +359,7 @@ if __name__ == '__main__':
         pickle.dump(clf, f, -1)
     del x_train
     gc.collect()
-
+    '''
     ###
     with open(DIR + 'model.pkl', 'rb') as f:
         clf = pickle.load(f)
@@ -341,18 +376,60 @@ if __name__ == '__main__':
         fillna_mean = pickle.load(f)
     x_test = load_test_data()
 
+    x_test = x_test.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('user_word_avg.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('aisle_fund.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                          how='left',
+                          on=['p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('department_fund.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                          how='left',
+                          on=['p_department_id'], copy=False)
+
+    logger.info('imba start')
+    with open('imba_test.pkl', 'rb') as f:
+        df = pickle.load(f).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id',
+                                            'aisle_id': 'p_aisle_id', 'department_id': 'p_department_id'})
+
+    df.drop(['add_to_cart_order_inverted_median',  'user_median_days_since_prior', 'days_since_prior_order_median', 'eval_set', 'product_name',
+             'order_hour_of_day_median', 'order_dow_median', 'up_median_cart_position', 'add_to_cart_order_relative_median', 'order_id'], axis=1, inplace=True)
+    df.columns = [str(col) + '_imba' if col not in {'o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'}
+                  else col for col in df.columns.values]
+    x_test = x_test.merge(df.astype(np.float32),
+                          how='left',
+                          on=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'], copy=False)
+
+    logger.info('imba end')
+
+    """
     id_cols = [col for col in x_test.columns.values
                if re.search('_id$', col) is not None and
                col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
     logger.debug('id_cols {}'.format(id_cols))
     x_test.drop(id_cols, axis=1, inplace=True)
-
+    """
     logger.info('usecols')
+
     x_test = x_test[usecols]
     gc.collect()
     logger.info('values {} {}'.format(len(usecols), x_test.shape))
     x_test.fillna(fillna_mean, inplace=True)
 
+    x_test = x_test.values.astype(np.float32)
+
+    logger.info('data end')
+    gc.collect()
+    x_test[np.isnan(x_test)] = -100
+    x_test[np.isinf(x_test)] = 999
+
+    logger.info('fillna')
+
+    with open(DIR + 'fillna_mean.pkl', 'rb') as f:
+        fillna_mean = pickle.load(f)
     if x_test.shape[1] != n_features:
         raise Exception('Not match feature num: %s %s' % (x_test.shape[1], n_features))
     logger.info('train end')
