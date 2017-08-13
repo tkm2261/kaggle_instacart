@@ -8,8 +8,8 @@ import gc
 import os
 from multiprocessing import Pool
 from tqdm import tqdm
-TRAIN_DATA_FOLDER = '../data2/dmt_train_only_rebuy/'
-TEST_DATA_FOLDER = '../data2/dmt_test_only_rebuy/'
+TRAIN_DATA_FOLDER = '../data/dmt_train_only_rebuy/'
+TEST_DATA_FOLDER = '../data/dmt_test_only_rebuy/'
 
 TRAIN_DATA_PATH = 'train_all.pkl'
 TEST_DATA_PATH = 'test_all.pkl'

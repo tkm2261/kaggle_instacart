@@ -134,23 +134,11 @@ def callback(data):
     logger.info('cal [{}] {} {}'.format(data.iteration + 1, sc, time.time() - t))
 
 
-TRAIN_DATA_PATH = 'train_all.pkl'
-TEST_DATA_PATH = 'test_all.pkl'
-
-
 def load():
     logger.info('load start')
-    """
-    x_train, y_train, cv = load_train_data()
-    with open(TRAIN_DATA_PATH, 'wb') as f:
-        pickle.dump((x_train, y_train, cv), f, -1)
-    """
-    with open(TRAIN_DATA_PATH, 'rb') as f:
-        x_train, y_train, cv = pickle.load(f)
 
+    x_train, y_train, cv = load_train_data()
     logger.info('merges')
-    # x_train['stack1'] = get_stack('result_0727/')
-    # init_score = np.log(init_score / (1 - init_score))
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -196,7 +184,7 @@ if __name__ == '__main__':
 
     all_params = {'min_child_weight': [13],
                   'subsample': [0.7],
-                  'seed': [1144],
+                  'seed': [114],
                   'n_estimators': [15500],
                   'colsample_bytree': [0.8],
                   'silent': [True],
@@ -211,7 +199,7 @@ if __name__ == '__main__':
                   'objective': ['binary'],
                   #'metric_freq': [100]
                   }
-    """    
+
     x_train, y_train, cv = load()
 
     logger.info('dump start')
@@ -224,10 +212,7 @@ if __name__ == '__main__':
     with open('train_0803.pkl', 'rb') as f:
         x_train, y_train, cv = pickle.load(f)
     logger.info('load end')
-
-    with open('result_0804_cont15500/' + 'usecols.pkl', 'rb') as f:
-        usecols = pickle.load(f)
-    x_train = x_train[usecols]
+    """
 
     x_train = x_train.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
                             how='left',
@@ -240,6 +225,27 @@ if __name__ == '__main__':
                             how='left',
                             on=['p_aisle_id'], copy=False)
     x_train = x_train.merge(pd.read_csv('department_fund.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                            how='left',
+                            on=['p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('aisle_fund2.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                            how='left',
+                            on=['p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('department_fund2.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                            how='left',
+                            on=['p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('user_aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id', 'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id', 'p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('user_depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id', 'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id', 'p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                            how='left',
+                            on=['p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
                             how='left',
                             on=['p_department_id'], copy=False)
 
@@ -320,7 +326,7 @@ if __name__ == '__main__':
                     verbose=False,
                     eval_metric=dummy,  # f1_metric,
                     # early_stopping_rounds=50
-                    categorical_feature=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id']
+                    #categorical_feature=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id']
                     )
             pred = clf.predict_proba(val_x)[:, 1]
             all_pred[test] = pred
@@ -382,7 +388,7 @@ if __name__ == '__main__':
     clf.fit(x_train, y_train,
             verbose=True,
             eval_metric="auc",
-            categorical_feature=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id']
+            #categorical_feature=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id']
             # sample_weight=sample_weight
             )
     with open(DIR + 'model.pkl', 'wb') as f:
@@ -422,6 +428,27 @@ if __name__ == '__main__':
                           how='left',
                           on=['p_department_id'], copy=False)
 
+    x_test = x_test.merge(pd.read_csv('aisle_fund2.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                          how='left',
+                          on=['p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('department_fund2.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                          how='left',
+                          on=['p_department_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('user_aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id', 'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id', 'p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('user_depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id', 'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id', 'p_department_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                          how='left',
+                          on=['p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                          how='left',
+                          on=['p_department_id'], copy=False)
+
     logger.info('imba start')
     with open('/home/ubuntu/imba_test.pkl', 'rb') as f:
         df = pickle.load(f).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id',
@@ -454,8 +481,8 @@ if __name__ == '__main__':
 
     logger.info('data end')
     gc.collect()
-    x_train.replace(np.inf, 999, inplace=True)
-    x_train.replace(-np.inf, -999, inplace=True)
+    x_test.replace(np.inf, 999, inplace=True)
+    x_test.replace(-np.inf, -999, inplace=True)
 
     logger.info('fillna')
     # x_test = x_test.as_matrix()
