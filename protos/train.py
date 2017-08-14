@@ -185,10 +185,10 @@ if __name__ == '__main__':
     all_params = {'min_child_weight': [13],
                   'subsample': [0.7],
                   'seed': [114],
-                  'n_estimators': [22000],
+                  'n_estimators': [2000],
                   'colsample_bytree': [0.8],
                   'silent': [True],
-                  'learning_rate': [0.01],
+                  'learning_rate': [0.1],
                   'max_depth': [5],
                   'min_data_in_bin': [8],
                   'min_split_gain': [0],
@@ -250,6 +250,10 @@ if __name__ == '__main__':
     x_train = x_train.merge(pd.read_csv('depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
                             how='left',
                             on=['p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('order_streaks.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id', 'o_product_id'], copy=False)
 
     logger.info('imba start')
     with open('/home/ubuntu/imba_train.pkl', 'rb') as f:
@@ -384,8 +388,8 @@ if __name__ == '__main__':
 
     gc.collect()
 
-    # for params in tqdm(list(ParameterGrid(all_params))):
-    #    min_params = params
+    for params in tqdm(list(ParameterGrid(all_params))):
+        min_params = params
     clf = LGBMClassifier(**min_params)
     clf.fit(x_train, y_train,
             verbose=True,
@@ -460,6 +464,9 @@ if __name__ == '__main__':
     x_test = x_test.merge(pd.read_csv('depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
                           how='left',
                           on=['p_department_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('order_streaks.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id', 'o_product_id'], copy=False)
 
     logger.info('imba start')
     with open('/home/ubuntu/imba_test.pkl', 'rb') as f:
