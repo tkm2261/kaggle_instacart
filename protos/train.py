@@ -185,7 +185,7 @@ if __name__ == '__main__':
     all_params = {'min_child_weight': [13],
                   'subsample': [0.7],
                   'seed': [114],
-                  'n_estimators': [15500],
+                  'n_estimators': [22000],
                   'colsample_bytree': [0.8],
                   'silent': [True],
                   'learning_rate': [0.01],
@@ -199,7 +199,7 @@ if __name__ == '__main__':
                   'objective': ['binary'],
                   #'metric_freq': [100]
                   }
-
+    """
     x_train, y_train, cv = load()
 
     logger.info('dump start')
@@ -212,7 +212,9 @@ if __name__ == '__main__':
     with open('train_0803.pkl', 'rb') as f:
         x_train, y_train, cv = pickle.load(f)
     logger.info('load end')
-    """
+
+    dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
+    x_train.drop(dropcols, axis=1, inplace=True)
 
     x_train = x_train.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
                             how='left',
@@ -414,6 +416,16 @@ if __name__ == '__main__':
 
     x_test = load_test_data()
 
+    id_cols = [col for col in x_test.columns.values
+               if re.search('_id$', col) is not None and
+               col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
+    logger.debug('id_cols {}'.format(id_cols))
+    x_test.drop(id_cols, axis=1, inplace=True)
+
+    dropcols = sorted(list(set(x_test.columns.values.tolist()) & set(DROP_FEATURE)))
+    x_test.drop(dropcols, axis=1, inplace=True)
+    logger.info('drop')
+
     x_test = x_test.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
                           how='left',
                           on=['o_user_id'], copy=False)
@@ -472,7 +484,7 @@ if __name__ == '__main__':
     """
     logger.info('usecols')
 
-    x_test = x_test[usecols]
+    #x_test = x_test[usecols]
     gc.collect()
     logger.info('values {} {}'.format(len(usecols), x_test.shape))
     x_test.fillna(fillna_mean, inplace=True)
