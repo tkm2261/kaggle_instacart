@@ -17,6 +17,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from tqdm import tqdm
+from lightgbm.sklearn import LGBMClassifier
 
 now_order_ids = None
 THRESH = 0.189
@@ -75,14 +76,14 @@ def hoge(data):
 if __name__ == '__main__':
 
     from logging import StreamHandler, DEBUG, Formatter, FileHandler
-
+    """
     np.random.seed()
     label = np.array(np.random.random(10) > 0.5, dtype=np.int)
     pred = np.random.random(10)
     group = np.array([3, 3, 1], dtype=np.int)
     f1_group_idx(label, pred, group)
     exit()
-
+    """
     log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
     handler = StreamHandler()
     handler.setLevel('INFO')
@@ -117,6 +118,24 @@ if __name__ == '__main__':
                   'seed': [6436]
                   }
 
+    all_params = {'min_child_weight': [13, 15],
+                  'subsample': [0.7, 0.6],
+                  'seed': [114],
+                  'n_estimators': [1550],
+                  'colsample_bytree': [0.8, 0.7],
+                  'silent': [True],
+                  'learning_rate': [0.1],
+                  'max_depth': [5, 6],
+                  'min_data_in_bin': [8, 3],
+                  'min_split_gain': [0],
+                  'reg_alpha': [1, 10],
+                  'max_bin': [511],
+                  'num_leaves': [31, 127],
+                  #'objective': [cst_obj],
+                  'objective': ['xentropy', 'binary'],
+                  #'metric_freq': [100]
+                  }
+
     logger.info('load start')
     np.random.seed(0)
     x_train = np.random.random((1000, 100))
@@ -132,6 +151,18 @@ if __name__ == '__main__':
     for params in tqdm(list(ParameterGrid(all_params))):
         train_data = lgb.Dataset(x_train, label=y_train)
         # test_data = lgb.Dataset(val_x, label=val_y)
+        clf = LGBMClassifier(**params)
+        clf.fit(tr, trn_y, callbacks=[callback],
+                # init_score=trn_sc, eval_init_score=[val_sc],
+                # sample_weight=trn_w,
+                # eval_sample_weight=[val_w],
+                eval_set=[(val_x, val_y)],
+                verbose=False,
+                eval_metric=dummy,  # f1_metric,
+                # early_stopping_rounds=50
+                )
+
+        """
         clf = lgb.train(params,
                         train_data,
                         10,  # params['n_estimators'],
@@ -141,3 +172,4 @@ if __name__ == '__main__':
                         # feval=f1_metric_xgb,
                         # fobj=logregobj
                         )
+        """

@@ -51,9 +51,9 @@ def read_csv(filename):
     normarize('i_i3_order_hour_of_day')
     normarize('i_i4_department_id')
 
-    # drop('^u2_')
+    drop('^u2_')
     gc.collect()
-    # drop('^i2_')
+    drop('^i2_')
 
     normarize('ui_order_dow')
     normarize('u3_order_hour_of_day')
@@ -81,8 +81,26 @@ def read_csv(filename):
     df['since_last_visit_order2'] = (df['o_order_number'] - df['l2_max_order_number']).astype(np.float32)
     df['since_last_visit_aisle2'] = (df['o_order_number'] - df['la2_max_order_number']).astype(np.float32)
     df['since_last_visit_depart2'] = (df['o_order_number'] - df['ld2_max_order_number']).astype(np.float32)
+
+    ###
+    df['since_last_order_rate'] = df['since_last_order'] / df['o_days_since_prior_order']
+    df['since_last_aisle_rate'] = df['since_last_aisle'] / df['o_days_since_prior_order']
+    df['since_last_depart_rate'] = df['since_last_depart'] / df['o_days_since_prior_order']
+    df['since_last_order2_rate'] = df['since_last_order2'] / df['o_days_since_prior_order']
+    df['since_last_aisle2_rate'] = df['since_last_aisle2'] / df['o_days_since_prior_order']
+    df['since_last_depart2_rate'] = df['since_last_depart2'] / df['o_days_since_prior_order']
+    df['since_last_order_diff_rate'] = df['since_last_order_diff'] / df['o_days_since_prior_order']
+    df['since_last_aisle_diff_rate'] = df['since_last_aisle_diff'] / df['o_days_since_prior_order']
+    df['since_last_depart_diff_rate'] = df['since_last_depart_diff'] / df['o_days_since_prior_order']
+    df['since_last_visit_order_rate'] = df['since_last_visit_order'] / df['o_days_since_prior_order']
+    df['since_last_visit_aisle_rate'] = df['since_last_visit_aisle'] / df['o_days_since_prior_order']
+    df['since_last_visit_depart_rate'] = df['since_last_visit_depart'] / df['o_days_since_prior_order']
+    df['since_last_visit_order2_rate'] = df['since_last_visit_order2'] / df['o_days_since_prior_order']
+    df['since_last_visit_aisle2_rate'] = df['since_last_visit_aisle2'] / df['o_days_since_prior_order']
+    df['since_last_visit_depart2_rate'] = df['since_last_visit_depart2'] / df['o_days_since_prior_order']
     ###
 
+    ###
     df['user_avg_days_rate'] = (df['udd_avg_diffs'] / df['du_avg_diffs']).astype(np.float32)
     df['user_avg_days_rate_30'] = (df['udd3_avg_diffs'] / df['du3_avg_diffs']).astype(np.float32)
 

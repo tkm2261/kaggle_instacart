@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from load_data import load_train_data, load_test_data
 from features_drop import DROP_FEATURE
-from features_0804 import FEATURES
+
 now_order_ids = None
 THRESH = 0.189
 
@@ -51,17 +51,30 @@ def dummy(label, pred):
 def cst_obj(label, preds):
     label = np.where(label > 0, 1, -1)
     preds = 1.0 / (1.0 + np.exp(-preds))
-    #res = f1_group_idx(label, preds, list_idx).astype(np.bool)
+    # res = f1_group_idx(label, preds, list_idx).astype(np.bool)
     response = - label / (1.0 + np.exp(1.0 + label * preds))
     grad = response
     abs_response = np.fabs(response)
     hess = abs_response * (1 - abs_response)
-    #grad[res] *= 0.8
-    #grad[~res] *= 1.2
-    #grad = preds - label
-    #hess = preds * (1.0 - preds)
+    # grad[res] *= 0.8
+    # grad[~res] *= 1.2
+    # grad = preds - label
+    # hess = preds * (1.0 - preds)
 
     return grad, hess
+
+
+def get_stack2(folder, cv, is_train=True):
+    all_pred = np.zeros(y_train.shape[0])
+    cnt = -1
+    for train, test in cv:
+        cnt += 1
+        with open(folder + 'train_cv_pred_%s.pkl' % cnt, 'rb') as f:
+            pred = pickle.load(f)
+        all_pred[test] = pred
+    with open(folder + 'train_cv_tmp.pkl', 'wb') as f:
+        pickle.dump(all_pred, f, -1)
+    return get_stack(folder, is_train)
 
 
 def get_stack(folder, is_train=True):
@@ -93,7 +106,7 @@ import time
 
 
 def callback(data):
-    if (data.iteration + 1) % 100 != 0:
+    if (data.iteration + 1) % 500 != 0:
         return
 
     clf = data.model
@@ -123,11 +136,9 @@ def callback(data):
 
 def load():
     logger.info('load start')
-    x_train, y_train, cv = load_train_data()
 
+    x_train, y_train, cv = load_train_data()
     logger.info('merges')
-    #x_train['stack1'] = get_stack('result_0727/')
-    #init_score = np.log(init_score / (1 - init_score))
 
     id_cols = [col for col in x_train.columns.values
                if re.search('_id$', col) is not None and
@@ -138,36 +149,20 @@ def load():
     dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
     x_train.drop(dropcols, axis=1, inplace=True)
     logger.info('drop')
-    #cols_ = pd.read_csv('result_0728_18000/feature_importances.csv')
-    #cols_ = cols_[cols_.imp == 0]['col'].values.tolist()
-    #cols_ = cols_['col'].values.tolist()[250:]
-    #dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(cols_)))
-    #x_train.drop(dropcols, axis=1, inplace=True)
 
-    #imp = pd.read_csv('result_0731_xentropy/feature_importances.csv')['col'].values
-    #x_train = x_train[imp]
-
+    gc.collect()
+    """
+    # x_train.replace([np.inf, -np.inf], np.nan, inplace=True)
     usecols = x_train.columns.values
-    #logger.debug('all_cols {}'.format(usecols))
+
     with open(DIR + 'usecols.pkl', 'wb') as f:
         pickle.dump(usecols, f, -1)
-    gc.collect()
-
-    #x_train.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     fillna_mean = x_train.mean()
     with open(DIR + 'fillna_mean.pkl', 'wb') as f:
         pickle.dump(fillna_mean, f, -1)
     x_train.fillna(fillna_mean, inplace=True)
-    x_train = x_train.values.astype(np.float32)
-
-    logger.info('data end')
-    # x_train[np.isnan(x_train)] = -10
-    gc.collect()
-    x_train[np.isnan(x_train)] = -100
-    x_train[np.isinf(x_train)] = 999
-
-    logger.info('load end {}'.format(x_train.shape))
+    """
     return x_train, y_train, cv
 
 
@@ -187,37 +182,116 @@ if __name__ == '__main__':
     logger.setLevel(DEBUG)
     logger.addHandler(handler)
 
-    all_params = {'min_child_weight': [10],
+    all_params = {'min_child_weight': [13],
                   'subsample': [0.7],
-                  'seed': [114514],
-                  'n_estimators': [15500],
-                  'colsample_bytree': [0.9],
+                  'seed': [114],
+                  'n_estimators': [2000],
+                  'colsample_bytree': [0.8],
                   'silent': [True],
-                  'learning_rate': [0.01],
+                  'learning_rate': [0.1],
                   'max_depth': [5],
                   'min_data_in_bin': [8],
                   'min_split_gain': [0],
                   'reg_alpha': [1],
                   'max_bin': [511],
+                  'num_leaves': [31],
                   #'objective': [cst_obj],
-                  #'objective': ['xentropy'],
+                  'objective': ['binary'],
                   #'metric_freq': [100]
                   }
-
+    """
     x_train, y_train, cv = load()
-    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
-    with open(DIR + 'usecols.pkl', 'rb') as f:
-        usecols = pickle.load(f)
+
     logger.info('dump start')
     with open('train_0803.pkl', 'wb') as f:
         pickle.dump((x_train, y_train, cv), f, -1)
     logger.info('dump end')
     """
+
     logger.info('load start')
     with open('train_0803.pkl', 'rb') as f:
         x_train, y_train, cv = pickle.load(f)
-    """
     logger.info('load end')
+
+    dropcols = sorted(list(set(x_train.columns.values.tolist()) & set(DROP_FEATURE)))
+    x_train.drop(dropcols, axis=1, inplace=True)
+
+    x_train = x_train.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('user_word_avg.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('aisle_fund.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                            how='left',
+                            on=['p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('department_fund.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                            how='left',
+                            on=['p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('aisle_fund2.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                            how='left',
+                            on=['p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('department_fund2.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                            how='left',
+                            on=['p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('user_aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id', 'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id', 'p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('user_depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id', 'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id', 'p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                            how='left',
+                            on=['p_aisle_id'], copy=False)
+    x_train = x_train.merge(pd.read_csv('depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                            how='left',
+                            on=['p_department_id'], copy=False)
+
+    x_train = x_train.merge(pd.read_csv('order_streaks.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id'}),
+                            how='left',
+                            on=['o_user_id', 'o_product_id'], copy=False)
+
+    logger.info('imba start')
+    with open('/home/ubuntu/imba_train.pkl', 'rb') as f:
+        df = pickle.load(f).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id',
+                                            'aisle_id': 'p_aisle_id', 'department_id': 'p_department_id'})
+
+    df.drop(['add_to_cart_order_inverted_median', 'reordered', 'user_median_days_since_prior', 'days_since_prior_order_median', 'eval_set', 'product_name',
+             'order_hour_of_day_median', 'order_dow_median', 'up_median_cart_position', 'add_to_cart_order_relative_median', 'order_id'], axis=1, inplace=True)
+    df.columns = [str(col) + '_imba' if col not in {'o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'}
+                  else col for col in df.columns.values]
+    x_train = x_train.merge(df.astype(np.float32),
+                            how='left',
+                            on=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'], copy=False)
+
+    logger.info('imba end')
+    del df
+    gc.collect()
+
+    fillna_mean = x_train.mean()
+    with open(DIR + 'fillna_mean.pkl', 'wb') as f:
+        pickle.dump(fillna_mean, f, -1)
+
+    usecols = x_train.columns.values
+    with open(DIR + 'usecols.pkl', 'wb') as f:
+        pickle.dump(usecols, f, -1)
+    df = pd.read_csv('train_data_idx.csv', usecols=['order_id', 'user_id', 'product_id'], dtype=int)
+    logger.info('load end')
+
+    #x_train = x_train.values.astype(np.float32)
+
+    logger.info('data end')
+    # x_train[np.isnan(x_train)] = -10
+    gc.collect()
+
+    x_train.replace(np.inf, 999, inplace=True)
+    x_train.replace(-np.inf, -999, inplace=True)
+
+    logger.info('load end {}'.format(x_train.shape))
 
     min_score = (100, 100, 100)
     min_params = None
@@ -242,8 +316,8 @@ if __name__ == '__main__':
 
             val_y = y_train[test]
 
-            #trn_sc = init_score[train]
-            #val_sc = init_score[test]
+            # trn_sc = init_score[train]
+            # val_sc = init_score[test]
 
             list_idx = df.loc[test].reset_index(drop=True).groupby(
                 'order_id').apply(lambda x: x.index.values.shape[0]).tolist()
@@ -251,13 +325,14 @@ if __name__ == '__main__':
 
             clf = LGBMClassifier(**params)
             clf.fit(trn_x, trn_y, callbacks=[callback],
-                    #init_score=trn_sc, eval_init_score=[val_sc],
+                    # init_score=trn_sc, eval_init_score=[val_sc],
                     # sample_weight=trn_w,
                     # eval_sample_weight=[val_w],
                     eval_set=[(val_x, val_y)],
                     verbose=False,
                     eval_metric=dummy,  # f1_metric,
                     # early_stopping_rounds=50
+                    #categorical_feature=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id']
                     )
             pred = clf.predict_proba(val_x)[:, 1]
             all_pred[test] = pred
@@ -313,12 +388,13 @@ if __name__ == '__main__':
 
     gc.collect()
 
-    # for params in tqdm(list(ParameterGrid(all_params))):
-    #    min_params = params
+    for params in tqdm(list(ParameterGrid(all_params))):
+        min_params = params
     clf = LGBMClassifier(**min_params)
     clf.fit(x_train, y_train,
             verbose=True,
             eval_metric="auc",
+            #categorical_feature=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id']
             # sample_weight=sample_weight
             )
     with open(DIR + 'model.pkl', 'wb') as f:
@@ -350,18 +426,83 @@ if __name__ == '__main__':
     logger.debug('id_cols {}'.format(id_cols))
     x_test.drop(id_cols, axis=1, inplace=True)
 
+    dropcols = sorted(list(set(x_test.columns.values.tolist()) & set(DROP_FEATURE)))
+    x_test.drop(dropcols, axis=1, inplace=True)
+    logger.info('drop')
+
+    x_test = x_test.merge(pd.read_csv('user_word_abs.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('user_word_avg.csv').astype(np.float32).rename(columns={'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('aisle_fund.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                          how='left',
+                          on=['p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('department_fund.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                          how='left',
+                          on=['p_department_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('aisle_fund2.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                          how='left',
+                          on=['p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('department_fund2.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                          how='left',
+                          on=['p_department_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('user_aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id', 'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id', 'p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('user_depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id', 'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id', 'p_department_id'], copy=False)
+
+    x_test = x_test.merge(pd.read_csv('aisle_recent_reordered.csv.gz').astype(np.float32).rename(columns={'aisle_id': 'p_aisle_id'}),
+                          how='left',
+                          on=['p_aisle_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('depart_recent_reordered.csv.gz').astype(np.float32).rename(columns={'department_id': 'p_department_id'}),
+                          how='left',
+                          on=['p_department_id'], copy=False)
+    x_test = x_test.merge(pd.read_csv('order_streaks.csv').astype(np.float32).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id'}),
+                          how='left',
+                          on=['o_user_id', 'o_product_id'], copy=False)
+
+    logger.info('imba start')
+    with open('/home/ubuntu/imba_test.pkl', 'rb') as f:
+        df = pickle.load(f).rename(columns={'product_id': 'o_product_id', 'user_id': 'o_user_id',
+                                            'aisle_id': 'p_aisle_id', 'department_id': 'p_department_id'})
+
+    df.drop(['add_to_cart_order_inverted_median',  'user_median_days_since_prior', 'days_since_prior_order_median', 'eval_set', 'product_name',
+             'order_hour_of_day_median', 'order_dow_median', 'up_median_cart_position', 'add_to_cart_order_relative_median', 'order_id'], axis=1, inplace=True)
+    df.columns = [str(col) + '_imba' if col not in {'o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'}
+                  else col for col in df.columns.values]
+    x_test = x_test.merge(df.astype(np.float32),
+                          how='left',
+                          on=['o_product_id', 'o_user_id', 'p_aisle_id', 'p_department_id'], copy=False)
+
+    logger.info('imba end')
+    """
+    id_cols = [col for col in x_test.columns.values
+               if re.search('_id$', col) is not None and
+               col not in set(['o_user_id', 'o_product_id', 'p_aisle_id', 'p_department_id'])]
+    logger.debug('id_cols {}'.format(id_cols))
+    x_test.drop(id_cols, axis=1, inplace=True)
+    """
     logger.info('usecols')
-    # x_test['0714_10000loop'] = get_stack('0714_10000loop/', is_train=False)
-    # x_test['0715_2nd_order'] = get_stack('0715_2nd_order/', is_train=False)
 
-    # x_test.drop(usecols, axis=1, inplace=True)
-    # x_test = x_test[FEATURE]
-
-    x_test = x_test[usecols]
+    #x_test = x_test[usecols]
     gc.collect()
     logger.info('values {} {}'.format(len(usecols), x_test.shape))
-    x_test.replace([np.inf, -np.inf], np.nan, inplace=True)
     x_test.fillna(fillna_mean, inplace=True)
+
+    #x_test = x_test.values.astype(np.float32)
+
+    logger.info('data end')
+    gc.collect()
+    x_test.replace(np.inf, 999, inplace=True)
+    x_test.replace(-np.inf, -999, inplace=True)
+
     logger.info('fillna')
     # x_test = x_test.as_matrix()
     if x_test.shape[1] != n_features:

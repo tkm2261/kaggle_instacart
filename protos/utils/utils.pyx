@@ -15,11 +15,11 @@ def f1_opt(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds):
 
     pNone = (1 - preds).prod()
 
-    cdef np.ndarray[long, ndim = 1] idx = np.argsort(preds)[::-1]
+    cdef np.ndarray[long, ndim= 1] idx = np.argsort(preds)[::-1]
     label = label[idx]
     preds = preds[idx]
 
-    cdef np.ndarray[double, ndim= 2] DP_C = np.zeros((n + 2, n + 1), dtype=np.float)
+    cdef np.ndarray[double, ndim = 2] DP_C = np.zeros((n + 2, n + 1), dtype=np.float)
 
     DP_C[0, 0] = 1.0
     for j in range(1, n):
@@ -29,15 +29,15 @@ def f1_opt(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds):
         for j in range(i + 1, n + 1):
             DP_C[i, j] = preds[j - 1] * DP_C[i - 1, j - 1] + (1.0 - preds[j - 1]) * DP_C[i, j - 1]
 
-    cdef np.ndarray[double, ndim= 1] DP_S = np.zeros((2 * n + 1,))
-    cdef np.ndarray[double, ndim= 1] DP_SNone = np.zeros((2 * n + 1,))
+    cdef np.ndarray[double, ndim = 1] DP_S = np.zeros((2 * n + 1,))
+    cdef np.ndarray[double, ndim = 1] DP_SNone = np.zeros((2 * n + 1,))
     for i in range(1, 2 * n + 1):
         DP_S[i] = 1. / (1. * i)
         DP_SNone[i] = 1. / (1. * i + 1)
 
     score = -1
-    cdef np.ndarray[double, ndim = 1] expectations = np.zeros(n + 1)
-    cdef np.ndarray[double, ndim = 1] expectationsNone = np.zeros(n + 1)
+    cdef np.ndarray[double, ndim= 1] expectations = np.zeros(n + 1)
+    cdef np.ndarray[double, ndim= 1] expectationsNone = np.zeros(n + 1)
 
     for k in range(n + 1)[::-1]:
         f1 = 0
@@ -177,11 +177,11 @@ def f1_idx(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds):
 
     pNone = (1 - preds).prod()
 
-    cdef np.ndarray[long, ndim = 1] idx = np.argsort(preds)[::-1]
+    cdef np.ndarray[long, ndim= 1] idx = np.argsort(preds)[::-1]
     label = label[idx]
     preds = preds[idx]
 
-    cdef np.ndarray[double, ndim= 2] DP_C = np.zeros((n + 2, n + 1), dtype=np.float)
+    cdef np.ndarray[double, ndim = 2] DP_C = np.zeros((n + 2, n + 1), dtype=np.float)
 
     DP_C[0, 0] = 1.0
     for j in range(1, n):
@@ -191,15 +191,15 @@ def f1_idx(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds):
         for j in range(i + 1, n + 1):
             DP_C[i, j] = preds[j - 1] * DP_C[i - 1, j - 1] + (1.0 - preds[j - 1]) * DP_C[i, j - 1]
 
-    cdef np.ndarray[double, ndim= 1] DP_S = np.zeros((2 * n + 1,))
-    cdef np.ndarray[double, ndim= 1] DP_SNone = np.zeros((2 * n + 1,))
+    cdef np.ndarray[double, ndim = 1] DP_S = np.zeros((2 * n + 1,))
+    cdef np.ndarray[double, ndim = 1] DP_SNone = np.zeros((2 * n + 1,))
     for i in range(1, 2 * n + 1):
         DP_S[i] = 1. / (1. * i)
         DP_SNone[i] = 1. / (1. * i + 1)
 
     score = -1
-    cdef np.ndarray[double, ndim = 1] expectations = np.zeros(n + 1)
-    cdef np.ndarray[double, ndim = 1] expectationsNone = np.zeros(n + 1)
+    cdef np.ndarray[double, ndim= 1] expectations = np.zeros(n + 1)
+    cdef np.ndarray[double, ndim= 1] expectationsNone = np.zeros(n + 1)
 
     for k in range(n + 1)[::-1]:
         f1 = 0
@@ -218,7 +218,7 @@ def f1_idx(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds):
     else:
         i = np.argsort(expectationsNone)[n] - 1
     cdef double thresh = preds[i]
-    cdef np.ndarray[long, ndim = 1] ret = np.zeros(n, dtype=np.int)
+    cdef np.ndarray[long, ndim= 1] ret = np.zeros(n, dtype=np.int)
     for i in range(n):
         if int(preds[i] >= thresh) == label[i]:
             ret[i] = i
@@ -232,7 +232,7 @@ def f1_group_idx(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] pred
     cdef double score = 0.
     cdef long m = group.shape[0]
     cdef long n = preds.shape[0]
-    cdef np.ndarray[long, ndim= 1] res = np.zeros(n, dtype=np.int)
+    cdef np.ndarray[long, ndim = 1] res = np.zeros(n, dtype=np.int)
 
     p = Pool()
     list_p = []
@@ -250,3 +250,30 @@ def f1_group_idx(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] pred
         res[start:end] = scores[i]
         start = end
     return res
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def f1_group_sc(np.ndarray[long, ndim=1] label, np.ndarray[double, ndim=1] preds, np.ndarray[long, ndim=1] group):
+    cdef int i, start, end, j, s
+    cdef double score = 0.
+    cdef long m = group.shape[0]
+    cdef long n = preds.shape[0]
+    cdef np.ndarray[long, ndim = 1] res = np.zeros(n, dtype=np.int)
+
+    p = Pool()
+    list_p = []
+    start = 0
+    for i in range(m):
+        end = start + group[i]
+        list_p.append(p.apply_async(f1_opt, (label[start:end], preds[start:end],)))
+        start = end
+    scores = [a.get() for a in list_p]
+    p.close()
+    p.join()
+    start = 0
+    for i in range(m):
+        end = start + group[i]
+        res[start:end] = scores[i]
+        start = end
+    return res, np.mean(scores)
