@@ -4,11 +4,11 @@ bq query --max_rows 1  --allow_large_results --destination_table "instacart.user
 SELECT
   user_id,
   count(1) as user_item_cnt,
-  count(distinct product_id) as user_prd_cnt,
-  count(distinct department_id) as user_depart_cnt,
-  count(distinct aisle_id) as user_aisle_cnt,
-  count(distinct order_id) as user_order_cnt,
-  count(distinct order_id) / count(1)  as user_order_rate,
+  EXACT_COUNT_DISTINCT(product_id) as user_prd_cnt,
+  EXACT_COUNT_DISTINCT(department_id) as user_depart_cnt,
+  EXACT_COUNT_DISTINCT(aisle_id) as user_aisle_cnt,
+  EXACT_COUNT_DISTINCT(order_id) as user_order_cnt,
+  EXACT_COUNT_DISTINCT(order_id) / count(1)  as user_order_rate,
   MAX(order_number) as max_order_number,
   AVG(days_since_prior_order) as avg_days_since_prior_order,
   MAX(days_since_prior_order) as max_days_since_prior_order,
@@ -17,7 +17,8 @@ SELECT
   MIN(order_hour_of_day) as min_order_hour_of_day,
   AVG(order_hour_of_day) as avg_order_hour_of_day,
   AVG(reordered) as avg_reordered,
-  SUM(reordered) as sum_reordered
+  SUM(reordered) as sum_reordered,
+  AVG(order_dow) as avg_order_dow
 FROM
   [instacart.df_prior]
 GROUP BY

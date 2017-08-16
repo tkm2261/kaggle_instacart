@@ -4,8 +4,6 @@ SELECT
   order_id,
   eval_set,
   order_number,
-  order_dow,
-  order_hour_of_day,  
   days_since_prior_order,
   SUM(days_since_prior_order) OVER (PARTITION BY user_id ORDER BY order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_days
 FROM
@@ -20,8 +18,6 @@ SELECT
   a.order_number order_number,
   a.days_since_prior_order days_since_prior_order,
   a.cum_days cum_days,
-  a.order_dow,
-  a.order_hour_of_day,  
   b.max_cum_days max_cum_days,
   b.max_cum_days - a.cum_days as last_buy
 FROM
@@ -104,13 +100,10 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
-  o.days_since_prior_order,
-  o.order_number - c.order_number as order_number_diff,
-  o.days_since_prior_order - c.days_since_prior_order
+  o.days_since_prior_order
 FROM
   (
   SELECT
@@ -146,13 +139,10 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
-  o.days_since_prior_order,
-  o.order_number - c.order_number as order_number_diff,
-  o.days_since_prior_order - c.days_since_prior_order
+  o.days_since_prior_order
 FROM
   (
   SELECT
@@ -187,13 +177,10 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
-  o.days_since_prior_order,
-  o.order_number - c.order_number as order_number_diff,
-  o.days_since_prior_order - c.days_since_prior_order
+  o.days_since_prior_order
 FROM
   (
   SELECT
@@ -225,7 +212,7 @@ ON
 ###
 
 bq query --max_rows 1  --allow_large_results --destination_table "instacart.last_buy_2" --flatten_results --replace "
-SELECT 
+SELECT
   a.user_id as user_id,
   a.product_id as product_id,
   a.max_order_number as max_order_number,
@@ -233,13 +220,10 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
-  o.days_since_prior_order,
-  o.order_number - c.order_number as order_number_diff,
-  o.days_since_prior_order - c.days_since_prior_order
+  o.days_since_prior_order
 FROM
   (
   SELECT
@@ -275,13 +259,10 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
-  o.days_since_prior_order,
-  o.order_number - c.order_number as order_number_diff,
-  o.days_since_prior_order - c.days_since_prior_order
+  o.days_since_prior_order
 FROM
   (
   SELECT
@@ -316,13 +297,10 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
-  o.days_since_prior_order,
-  o.order_number - c.order_number as order_number_diff,
-  o.days_since_prior_order - c.days_since_prior_order
+  o.days_since_prior_order
 FROM
   (
   SELECT
@@ -359,16 +337,13 @@ SELECT
   a.user_id as user_id,
   a.product_id as product_id,
   count(1) cnt_user_item,
-  EXACT_COUNT_DISTINCT(a.order_id) cnt_user_order,
+  count(distinct a.order_id) cnt_user_order,
   avg(a.order_hour_of_day) avg_order_hour_of_day,
   min(a.order_hour_of_day) min_order_hour_of_day,
   max(a.order_hour_of_day) max_order_hour_of_day,
   max(a.reordered) max_reordered,
   sum(a.reordered) sum_reordered,
   avg(a.reordered) avg_reordered,
-  AVG(a.order_dow) as avg_order_dow,
-  MIN(a.order_dow) as min_order_dow,
-  MAX(a.order_dow) as max_order_dow,
   AVG(a.days_since_prior_order) as avg_days_since_prior_order,
   MAX(a.days_since_prior_order) as max_days_since_prior_order,
   MIN(a.days_since_prior_order) as min_days_since_prior_order,
@@ -403,20 +378,11 @@ SELECT
   a.user_id as user_id,
   a.aisle_id as aisle_id,
   count(1) cnt_user_aisle,
-  EXACT_COUNT_DISTINCT(a.order_id) cnt_aisle_order,
-  EXACT_COUNT_DISTINCT(a.product_id) cnt_product_order,
-  avg(a.order_hour_of_day) avg_order_hour_of_day,
-  min(a.order_hour_of_day) min_order_hour_of_day,
-  max(a.order_hour_of_day) max_order_hour_of_day,
-  AVG(a.days_since_prior_order) as avg_days_since_prior_order,
-  MAX(a.days_since_prior_order) as max_days_since_prior_order,
-  MIN(a.days_since_prior_order) as min_days_since_prior_order,
-  AVG(order_dow) as avg_order_dow,
-  MAX(order_dow) as max_order_dow,
-  MIN(order_dow) as min_order_dow,
-  max(reordered) max_reordered,
-  sum(reordered) sum_reordered,
-  avg(reordered) avg_reordered
+  count(distinct a.order_id) cnt_aisle_order,
+  count(distinct a.product_id) cnt_product_order,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered
 FROM
   [instacart.df_prior] as a
 LEFT OUTER JOIN
@@ -434,21 +400,12 @@ SELECT
   a.user_id user_id,
   a.department_id department_id,
   count(1) cnt_user_depart,
-  EXACT_COUNT_DISTINCT(a.order_id) cnt_depart_order,
-  EXACT_COUNT_DISTINCT(a.product_id) cnt_product_order,
-  EXACT_COUNT_DISTINCT(a.aisle_id) cnt_aisle_order,
-  avg(a.order_hour_of_day) avg_order_hour_of_day,
-  min(a.order_hour_of_day) min_order_hour_of_day,
-  max(a.order_hour_of_day) max_order_hour_of_day,
-  AVG(a.days_since_prior_order) as avg_days_since_prior_order,
-  MAX(a.days_since_prior_order) as max_days_since_prior_order,
-  MIN(a.days_since_prior_order) as min_days_since_prior_order,
-  AVG(order_dow) as avg_order_dow,
-  MAX(order_dow) as max_order_dow,
-  MIN(order_dow) as min_order_dow,
-  max(reordered) max_reordered,
-  sum(reordered) sum_reordered,
-  avg(reordered) avg_reordered
+  count(distinct a.order_id) cnt_depart_order,
+  count(distinct a.product_id) cnt_product_order,
+  count(distinct a.aisle_id) cnt_aisle_order,
+  max(a.reordered) max_reordered,
+  sum(a.reordered) sum_reordered,
+  avg(a.reordered) avg_reordered
 FROM
   [instacart.df_prior] as a
 LEFT OUTER JOIN
@@ -469,7 +426,7 @@ SELECT
   user_id,
   product_id,
   count(1) cnt_user_item,
-  EXACT_COUNT_DISTINCT(order_id) cnt_user_order,
+  count(distinct order_id) cnt_user_order,
   avg(order_hour_of_day) avg_order_hour_of_day,
   min(order_hour_of_day) min_order_hour_of_day,
   max(order_hour_of_day) max_order_hour_of_day,
@@ -507,8 +464,8 @@ SELECT
   user_id,
   aisle_id,
   count(1) cnt_user_aisle,
-  EXACT_COUNT_DISTINCT(order_id) cnt_aisle_order,
-  EXACT_COUNT_DISTINCT(product_id) cnt_product_order,
+  count(distinct order_id) cnt_aisle_order,
+  count(distinct product_id) cnt_product_order,
   avg(order_hour_of_day) avg_order_hour_of_day,
   min(order_hour_of_day) min_order_hour_of_day,
   max(order_hour_of_day) max_order_hour_of_day,
@@ -532,9 +489,9 @@ SELECT
   user_id,
   department_id,
   count(1) cnt_user_depart,
-  EXACT_COUNT_DISTINCT(order_id) cnt_depart_order,
-  EXACT_COUNT_DISTINCT(product_id) cnt_product_order,
-  EXACT_COUNT_DISTINCT(aisle_id) cnt_aisle_order,
+  count(distinct order_id) cnt_depart_order,
+  count(distinct product_id) cnt_product_order,
+  count(distinct aisle_id) cnt_aisle_order,
   avg(order_hour_of_day) avg_order_hour_of_day,
   min(order_hour_of_day) min_order_hour_of_day,
   max(order_hour_of_day) max_order_hour_of_day,
@@ -573,9 +530,9 @@ SELECT
   a.user_id as user_id,
   a.order_id as order_id,
   count(1) cnt_order,
-  EXACT_COUNT_DISTINCT(a.product_id) cnt_item,
-  EXACT_COUNT_DISTINCT(a.aisle_id) cnt_aisle,
-  EXACT_COUNT_DISTINCT(a.department_id) cnt_depart,
+  count(distinct a.product_id) cnt_item,
+  count(distinct a.aisle_id) cnt_aisle,
+  count(distinct a.department_id) cnt_depart,
   sum(a.reordered) sum_reordered,
   avg(a.reordered) avg_reordered,
   avg(a.order_dow) as order_dow,
@@ -601,8 +558,6 @@ bq query --max_rows 20  --allow_large_results --destination_table "instacart.dif
 SELECT
   user_id,
   product_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -631,8 +586,6 @@ bq query --max_rows 20  --allow_large_results --destination_table "instacart.dif
 SELECT
   user_id,
   product_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -660,8 +613,6 @@ bq query --max_rows 20  --allow_large_results --destination_table "instacart.dif
 SELECT
   user_id,
   aisle_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -690,8 +641,6 @@ bq query --max_rows 20  --allow_large_results --destination_table "instacart.dif
 SELECT
   user_id,
   aisle_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(51, QUANTILES(diffs - last_buy, 101)) is not NULL THEN NTH(51, QUANTILES(diffs - last_buy, 101)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -719,8 +668,6 @@ bq query --max_rows 20  --allow_large_results --destination_table "instacart.dif
 SELECT
   user_id,
   department_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -749,8 +696,6 @@ bq query --max_rows 20  --allow_large_results --destination_table "instacart.dif
 SELECT
   user_id,
   department_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -776,8 +721,6 @@ GROUP BY
 bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_user_30" --flatten_results --replace "
 SELECT
   user_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -804,8 +747,6 @@ GROUP BY
 bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_user" --flatten_results --replace "
 SELECT
   user_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -828,11 +769,11 @@ GROUP BY
 "
 
 ###
+
+
 bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_item_30" --flatten_results --replace "
 SELECT
   product_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -855,13 +796,10 @@ WHERE
 GROUP BY
   product_id
 "
-
 
 bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_item" --flatten_results --replace "
 SELECT
   product_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
   CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
@@ -882,75 +820,14 @@ ON
 GROUP BY
   product_id
 "
-######
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_aisle_30" --flatten_results --replace "
-SELECT
-  aisle_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
-  CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
-  CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
-  CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs
-FROM
-(
-SELECT
-  a.user_id as user_id,
-  a.aisle_id as aisle_id,
-  LAG(b.last_buy, 1) OVER (PARTITION BY a.user_id, a.aisle_id ORDER BY a.order_number) as diffs,
-  b.last_buy as last_buy
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-WHERE
-  b.last_buy <= 30
-) as s
-GROUP BY
-  aisle_id
-"
-
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_depart_30" --flatten_results --replace "
-SELECT
-  department_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
-  CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
-  CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
-  CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs
-FROM
-(
-SELECT
-  a.user_id as user_id,
-  a.department_id as department_id,
-  LAG(b.last_buy, 1) OVER (PARTITION BY a.user_id, a.department_id ORDER BY a.order_number) as diffs,
-  b.last_buy as last_buy
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-WHERE
-  b.last_buy <= 30
-) as s
-GROUP BY
-   department_id
-"
-
 
 bq query --max_rows 20  --allow_large_results --destination_table "instacart.diff_user_item_reordered_30" --flatten_results --replace "
 SELECT
   user_id,
   product_id,
-  CASE WHEN STDDEV(diffs - last_buy) is not NULL THEN STDDEV(diffs - last_buy) ELSE -1 END as std_diffs,
-  CASE WHEN NTH(501, QUANTILES(diffs - last_buy, 1001)) is not NULL THEN NTH(501, QUANTILES(diffs - last_buy, 1001)) ELSE -1 END as med_diffs,
   CASE WHEN avg(diffs - last_buy) is not NULL THEN avg(diffs - last_buy) ELSE -1 END as avg_diffs,
   CASE WHEN min(diffs - last_buy) is not NULL THEN min(diffs - last_buy) ELSE -1 END as min_diffs,
-  CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs
+  CASE WHEN max(diffs - last_buy) is not NULL THEN max(diffs - last_buy) ELSE -1 END as max_diffs  
 FROM
 (
 SELECT
@@ -971,143 +848,6 @@ GROUP BY
   user_id, product_id
 "
 
-###
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.user_item_recent_reordered" --flatten_results --replace "
-SELECT
-  a.user_id as user_id,
-  a.product_id as product_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  user_id, product_id
-"
-####
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.user_aisle_recent_reordered" --flatten_results --replace "
-SELECT
-  a.user_id as user_id,
-  a.aisle_id as aisle_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  user_id, aisle_id
-"
-
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.user_depart_recent_reordered" --flatten_results --replace "
-SELECT
-  a.user_id as user_id,
-  a.department_id as department_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  user_id, department_id
-"
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.aisle_recent_reordered" --flatten_results --replace "
-SELECT
-  a.aisle_id as aisle_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  aisle_id
-"
-
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.depart_recent_reordered" --flatten_results --replace "
-SELECT
-  a.department_id as department_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  department_id
-"
-
-
-
-####
-
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.item_recent_reordered" --flatten_results --replace "
-SELECT
-  a.product_id as product_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as i_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as i_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as i_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as i_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as i_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  product_id
-"
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.user_recent_reordered" --flatten_results --replace "
-SELECT
-  a.user_id as user_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as u_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as u_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as u_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as u_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as u_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  user_id
-"
 
 
 bq query --max_rows 1  --maximum_billing_tier 3 --allow_large_results --destination_table "instacart.dmt_train_only_rebuy" --flatten_results --replace "
@@ -1127,21 +867,14 @@ SELECT
   dui3.*,
   dd.*,
   du3.*,
-  da3.*,
   dd3.*,
   udd.*,
   udd3.*,
   di.*,
   di3.*,
-  ddi3.*,
-  ddd3.*,
-  dai3.*,
-  dddi3.*,
   u.*,
-  u2.*,
   uc.*,
   i.*,
-  i2.*,
   l.*,
   la.*,
   ld.*,
@@ -1153,10 +886,7 @@ SELECT
   ud.*,
   ui3.*,
   ua3.*,
-  ud3.*,
-  rui.*,
-  ru.*,
-  ri.*
+  ud3.*
 FROM
   [instacart.only_rebuy_train] as o
 LEFT OUTER JOIN
@@ -1172,14 +902,6 @@ LEFT OUTER JOIN
 ON
   dui3.user_id = o.user_id AND  o.product_id = dui3.product_id
 LEFT OUTER JOIN
-  [instacart.diff_user_aisle_reordered_30] as dai3
-ON
-  dai3.user_id = o.user_id AND p.aisle_id = dai3.aisle_id
-LEFT OUTER JOIN
-  [instacart.diff_user_depart_reordered_30] as dddi3
-ON
-  dddi3.user_id = o.user_id AND  p.department_id = dddi3.department_id
-LEFT OUTER JOIN
   [instacart.diff_user_depart] as dd
 ON
   dd.user_id = o.user_id AND  p.product_id = dd.department_id
@@ -1187,10 +909,6 @@ LEFT OUTER JOIN
   [instacart.diff_user_item_30] as du3
 ON
   du3.user_id = o.user_id AND  o.product_id = du3.product_id
-LEFT OUTER JOIN
-  [instacart.diff_user_aisle_30] as da3
-ON
-  da3.user_id = o.user_id AND  p.aisle_id = da3.aisle_id
 LEFT OUTER JOIN
   [instacart.diff_user_depart_30] as dd3
 ON
@@ -1212,21 +930,9 @@ LEFT OUTER JOIN
 ON
   di3.product_id = o.product_id
 LEFT OUTER JOIN
-  [instacart.diff_aisle_30] as ddi3
-ON
-  ddi3.aisle_id = p.aisle_id
-LEFT OUTER JOIN
-  [instacart.diff_depart_30] as ddd3
-ON
-  ddd3.department_id = p.department_id
-LEFT OUTER JOIN
   [instacart.dmt_user] as u
 ON
   u.u1_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_30] as u2
-ON
-  u2.u1_user_id = o.user_id
 LEFT OUTER JOIN
   [instacart.user_cart_30] as uc
 ON
@@ -1235,10 +941,6 @@ LEFT OUTER JOIN
   [instacart.dmt_item] as i
 ON
   i.i1_product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.dmt_item2_30] as i2
-ON
-  i2.i1_product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.last_buy] as l
 ON
@@ -1287,18 +989,6 @@ LEFT OUTER JOIN
   [instacart.dmt_user_depart_30] as ud3
 ON
   ud3.user_id = o.user_id AND ud3.department_id = p.department_id
-LEFT OUTER JOIN
-  [instacart.user_item_recent_reordered] as rui
-ON
-  rui.user_id = o.user_id AND rui.product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.user_recent_reordered] as ru
-ON
-  ru.user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.item_recent_reordered] as ri
-ON
-  ri.product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.df_train] as tr
 ON
@@ -1323,21 +1013,14 @@ SELECT
   dui3.*,
   dd.*,
   du3.*,
-  da3.*,
   dd3.*,
   udd.*,
   udd3.*,
   di.*,
   di3.*,
-  ddi3.*,
-  ddd3.*,
-  dai3.*,
-  dddi3.*,
   u.*,
-  u2.*,
   uc.*,
   i.*,
-  i2.*,
   l.*,
   la.*,
   ld.*,
@@ -1349,10 +1032,7 @@ SELECT
   ud.*,
   ui3.*,
   ua3.*,
-  ud3.*,
-  rui.*,
-  ru.*,
-  ri.*
+  ud3.*
 FROM
   [instacart.only_rebuy_test] as o
 LEFT OUTER JOIN
@@ -1368,14 +1048,6 @@ LEFT OUTER JOIN
 ON
   dui3.user_id = o.user_id AND  o.product_id = dui3.product_id
 LEFT OUTER JOIN
-  [instacart.diff_user_aisle_reordered_30] as dai3
-ON
-  dai3.user_id = o.user_id AND p.aisle_id = dai3.aisle_id
-LEFT OUTER JOIN
-  [instacart.diff_user_depart_reordered_30] as dddi3
-ON
-  dddi3.user_id = o.user_id AND  p.department_id = dddi3.department_id
-LEFT OUTER JOIN
   [instacart.diff_user_depart] as dd
 ON
   dd.user_id = o.user_id AND  p.product_id = dd.department_id
@@ -1383,10 +1055,6 @@ LEFT OUTER JOIN
   [instacart.diff_user_item_30] as du3
 ON
   du3.user_id = o.user_id AND  o.product_id = du3.product_id
-LEFT OUTER JOIN
-  [instacart.diff_user_aisle_30] as da3
-ON
-  da3.user_id = o.user_id AND  p.aisle_id = da3.aisle_id
 LEFT OUTER JOIN
   [instacart.diff_user_depart_30] as dd3
 ON
@@ -1408,21 +1076,9 @@ LEFT OUTER JOIN
 ON
   di3.product_id = o.product_id
 LEFT OUTER JOIN
-  [instacart.diff_aisle_30] as ddi3
-ON
-  ddi3.aisle_id = p.aisle_id
-LEFT OUTER JOIN
-  [instacart.diff_depart_30] as ddd3
-ON
-  ddd3.department_id = p.department_id
-LEFT OUTER JOIN
   [instacart.dmt_user] as u
 ON
   u.u1_user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.dmt_user2_30] as u2
-ON
-  u2.u1_user_id = o.user_id
 LEFT OUTER JOIN
   [instacart.user_cart_30] as uc
 ON
@@ -1432,9 +1088,9 @@ LEFT OUTER JOIN
 ON
   i.i1_product_id = o.product_id
 LEFT OUTER JOIN
-  [instacart.dmt_item2_30] as i2
+  [instacart.dmt_user_item] as ui
 ON
-  i2.i1_product_id = o.product_id
+  ui.user_id = o.user_id AND ui.product_id = o.product_id
 LEFT OUTER JOIN
   [instacart.last_buy] as l
 ON
@@ -1460,10 +1116,6 @@ LEFT OUTER JOIN
 ON
   ld2.user_id = o.user_id AND ld2.department_id = p.department_id
 LEFT OUTER JOIN
-  [instacart.dmt_user_item] as ui
-ON
-  ui.user_id = o.user_id AND ui.product_id = o.product_id
-LEFT OUTER JOIN
   [instacart.dmt_user_aisle] as ua
 ON
   ua.user_id = o.user_id AND ua.aisle_id = p.aisle_id
@@ -1483,22 +1135,6 @@ LEFT OUTER JOIN
   [instacart.dmt_user_depart_30] as ud3
 ON
   ud3.user_id = o.user_id AND ud3.department_id = p.department_id
-LEFT OUTER JOIN
-  [instacart.df_train] as tr
-ON
-  tr.user_id = o.user_id AND tr.product_id = o.product_id AND tr.order_id = o.order_id
-LEFT OUTER JOIN
-  [instacart.user_item_recent_reordered] as rui
-ON
-  rui.user_id = o.user_id AND rui.product_id = o.product_id
-LEFT OUTER JOIN
-  [instacart.user_recent_reordered] as ru
-ON
-  ru.user_id = o.user_id
-LEFT OUTER JOIN
-  [instacart.item_recent_reordered] as ri
-ON
-  ri.product_id = o.product_id
 "
 
 gsutil -m rm -r gs://kaggle-instacart-takami/data/

@@ -4,11 +4,11 @@ bq query --max_rows 1  --allow_large_results --destination_table "instacart.item
 SELECT
   product_id,
   count(1) as item_user_cnt,
-  count(distinct user_id) as item_usr_cnt,
-  count(distinct department_id) as item_depart_cnt,
-  count(distinct aisle_id) as item_aisle_cnt,
-  count(distinct order_id) as item_order_cnt,
-  count(distinct order_id) / count(1) as item_order_rate,
+  EXACT_COUNT_DISTINCT( user_id) as item_usr_cnt,
+  EXACT_COUNT_DISTINCT( department_id) as item_depart_cnt,
+  EXACT_COUNT_DISTINCT( aisle_id) as item_aisle_cnt,
+  EXACT_COUNT_DISTINCT( order_id) as item_order_cnt,
+  EXACT_COUNT_DISTINCT( order_id) / count(1) as item_order_rate,
   AVG(days_since_prior_order) as avg_item_days_since_prior_order,
   MIN(days_since_prior_order) as min_item_days_since_prior_order,
   MAX(days_since_prior_order) as max_item_days_since_prior_order,
@@ -16,7 +16,8 @@ SELECT
   MIN(order_hour_of_day) as min_order_hour_of_day,
   AVG(order_hour_of_day) as avg_order_hour_of_day,
   AVG(reordered) as avg_item_reordered,
-  SUM(reordered) as sum_item_reordered
+  SUM(reordered) as sum_item_reordered,
+  AVG(order_dow) as avg_order_dow
 FROM
   [instacart.df_prior]
 GROUP BY
@@ -32,14 +33,7 @@ SELECT
   sum(CASE WHEN order_dow = 3  THEN 1 ELSE 0 END) AS  order_dow_3,
   sum(CASE WHEN order_dow = 4  THEN 1 ELSE 0 END) AS  order_dow_4,
   sum(CASE WHEN order_dow = 5  THEN 1 ELSE 0 END) AS  order_dow_5,
-  sum(CASE WHEN order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6,
-  avg(CASE WHEN order_dow = 0  THEN reordered ELSE null END) AS  reorder_dow_0,
-  avg(CASE WHEN order_dow = 1  THEN reordered ELSE null END) AS  reorder_dow_1,
-  avg(CASE WHEN order_dow = 2  THEN reordered ELSE null END) AS  reorder_dow_2,
-  avg(CASE WHEN order_dow = 3  THEN reordered ELSE null END) AS  reorder_dow_3,
-  avg(CASE WHEN order_dow = 4  THEN reordered ELSE null END) AS  reorder_dow_4,
-  avg(CASE WHEN order_dow = 5  THEN reordered ELSE null END) AS  reorder_dow_5,
-  avg(CASE WHEN order_dow = 6  THEN reordered ELSE null END) AS  reorder_dow_6
+  sum(CASE WHEN order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6
 FROM
   [instacart.df_prior]
 GROUP BY

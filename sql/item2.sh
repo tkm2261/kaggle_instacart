@@ -15,7 +15,8 @@ SELECT
   MAX(order_hour_of_day) as max_order_hour_of_day,
   MIN(order_hour_of_day) as min_order_hour_of_day,
   AVG(order_hour_of_day) as avg_order_hour_of_day,
-  AVG(reordered) as avg_item_reordered
+  AVG(reordered) as avg_item_reordered,
+  SUM(reordered) as sum_item_reordered
 FROM
   [instacart.df_prior2]
 GROUP BY
@@ -31,14 +32,7 @@ SELECT
   sum(CASE WHEN order_dow = 3  THEN 1 ELSE 0 END) AS  order_dow_3,
   sum(CASE WHEN order_dow = 4  THEN 1 ELSE 0 END) AS  order_dow_4,
   sum(CASE WHEN order_dow = 5  THEN 1 ELSE 0 END) AS  order_dow_5,
-  sum(CASE WHEN order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6,
-  avg(CASE WHEN order_dow = 0  THEN reordered ELSE null END) AS  reorder_dow_0,
-  avg(CASE WHEN order_dow = 1  THEN reordered ELSE null END) AS  reorder_dow_1,
-  avg(CASE WHEN order_dow = 2  THEN reordered ELSE null END) AS  reorder_dow_2,
-  avg(CASE WHEN order_dow = 3  THEN reordered ELSE null END) AS  reorder_dow_3,
-  avg(CASE WHEN order_dow = 4  THEN reordered ELSE null END) AS  reorder_dow_4,
-  avg(CASE WHEN order_dow = 5  THEN reordered ELSE null END) AS  reorder_dow_5,
-  avg(CASE WHEN order_dow = 6  THEN reordered ELSE null END) AS  reorder_dow_6
+  sum(CASE WHEN order_dow = 6  THEN 1 ELSE 0 END) AS  order_dow_6
 FROM
   [instacart.df_prior2]
 GROUP BY

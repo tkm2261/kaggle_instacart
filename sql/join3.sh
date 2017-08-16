@@ -5,7 +5,7 @@ SELECT
   eval_set,
   order_number,
   order_dow,
-  order_hour_of_day,  
+  order_hour_of_day,
   days_since_prior_order,
   SUM(days_since_prior_order) OVER (PARTITION BY user_id ORDER BY order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_days
 FROM
@@ -18,12 +18,12 @@ SELECT
   a.order_id order_id,
   a.eval_set eval_set,
   a.order_number order_number,
+  a.order_dow order_dow,
+  a.order_hour_of_day as order_hour_of_day,
   a.days_since_prior_order days_since_prior_order,
-  a.cum_days cum_days,
-  a.order_dow,
-  a.order_hour_of_day,  
+  CASE WHEN a.cum_days is NULL THEN 0 ELSE a.cum_days END cum_days,
   b.max_cum_days max_cum_days,
-  b.max_cum_days - a.cum_days as last_buy
+  b.max_cum_days - CASE WHEN a.cum_days is NULL THEN 0 ELSE a.cum_days END as last_buy
 FROM
   [work.tmp1] as a
 LEFT OUTER JOIN
@@ -104,12 +104,14 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
+  CASE WHEN c.last_buy IS NULL THEN 9999 ELSE c.last_buy END as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.order_number - c.order_number as order_number_diff,
+  o.order_dow - c.order_dow as order_dow_diff,
+  o.order_hour_of_day - c.order_hour_of_day as order_hour_of_day_diff,
   o.days_since_prior_order - c.days_since_prior_order
 FROM
   (
@@ -146,12 +148,14 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
+  CASE WHEN c.last_buy IS NULL THEN 9999 ELSE c.last_buy END as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.order_number - c.order_number as order_number_diff,
+  o.order_dow - c.order_dow as order_dow_diff,
+  o.order_hour_of_day - c.order_hour_of_day as order_hour_of_day_diff,
   o.days_since_prior_order - c.days_since_prior_order
 FROM
   (
@@ -187,12 +191,14 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
+  CASE WHEN c.last_buy IS NULL THEN 9999 ELSE c.last_buy END as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.order_number - c.order_number as order_number_diff,
+  o.order_dow - c.order_dow as order_dow_diff,
+  o.order_hour_of_day - c.order_hour_of_day as order_hour_of_day_diff,
   o.days_since_prior_order - c.days_since_prior_order
 FROM
   (
@@ -233,12 +239,14 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
+  CASE WHEN c.last_buy IS NULL THEN 9999 ELSE c.last_buy END as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.order_number - c.order_number as order_number_diff,
+  o.order_dow - c.order_dow as order_dow_diff,
+  o.order_hour_of_day - c.order_hour_of_day as order_hour_of_day_diff,
   o.days_since_prior_order - c.days_since_prior_order
 FROM
   (
@@ -275,12 +283,14 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
+  CASE WHEN c.last_buy IS NULL THEN 9999 ELSE c.last_buy END as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.order_number - c.order_number as order_number_diff,
+  o.order_dow - c.order_dow as order_dow_diff,
+  o.order_hour_of_day - c.order_hour_of_day as order_hour_of_day_diff,
   o.days_since_prior_order - c.days_since_prior_order
 FROM
   (
@@ -316,12 +326,14 @@ SELECT
   a.avg_reordered as avg_reordered,
   o.order_id,
   c.cum_days as cum_days,
-  c.last_buy as last_buy,
+  CASE WHEN c.last_buy IS NULL THEN 9999 ELSE c.last_buy END as last_buy,
   o.order_number,
   o.order_dow,
   o.order_hour_of_day,
   o.days_since_prior_order,
   o.order_number - c.order_number as order_number_diff,
+  o.order_dow - c.order_dow as order_dow_diff,
+  o.order_hour_of_day - c.order_hour_of_day as order_hour_of_day_diff,
   o.days_since_prior_order - c.days_since_prior_order
 FROM
   (
@@ -405,9 +417,9 @@ SELECT
   count(1) cnt_user_aisle,
   EXACT_COUNT_DISTINCT(a.order_id) cnt_aisle_order,
   EXACT_COUNT_DISTINCT(a.product_id) cnt_product_order,
-  avg(a.order_hour_of_day) avg_order_hour_of_day,
-  min(a.order_hour_of_day) min_order_hour_of_day,
-  max(a.order_hour_of_day) max_order_hour_of_day,
+  avg(order_hour_of_day) avg_order_hour_of_day,
+  min(order_hour_of_day) min_order_hour_of_day,
+  max(order_hour_of_day) max_order_hour_of_day,
   AVG(a.days_since_prior_order) as avg_days_since_prior_order,
   MAX(a.days_since_prior_order) as max_days_since_prior_order,
   MIN(a.days_since_prior_order) as min_days_since_prior_order,
@@ -437,9 +449,9 @@ SELECT
   EXACT_COUNT_DISTINCT(a.order_id) cnt_depart_order,
   EXACT_COUNT_DISTINCT(a.product_id) cnt_product_order,
   EXACT_COUNT_DISTINCT(a.aisle_id) cnt_aisle_order,
-  avg(a.order_hour_of_day) avg_order_hour_of_day,
-  min(a.order_hour_of_day) min_order_hour_of_day,
-  max(a.order_hour_of_day) max_order_hour_of_day,
+  avg(order_hour_of_day) avg_order_hour_of_day,
+  min(order_hour_of_day) min_order_hour_of_day,
+  max(order_hour_of_day) max_order_hour_of_day,
   AVG(a.days_since_prior_order) as avg_days_since_prior_order,
   MAX(a.days_since_prior_order) as max_days_since_prior_order,
   MIN(a.days_since_prior_order) as min_days_since_prior_order,
@@ -991,87 +1003,6 @@ ON
 GROUP BY
   user_id, product_id
 "
-####
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.user_aisle_recent_reordered" --flatten_results --replace "
-SELECT
-  a.user_id as user_id,
-  a.aisle_id as aisle_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  user_id, aisle_id
-"
-
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.user_depart_recent_reordered" --flatten_results --replace "
-SELECT
-  a.user_id as user_id,
-  a.department_id as department_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  user_id, department_id
-"
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.aisle_recent_reordered" --flatten_results --replace "
-SELECT
-  a.aisle_id as aisle_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  aisle_id
-"
-
-
-bq query --max_rows 20  --allow_large_results --destination_table "instacart.depart_recent_reordered" --flatten_results --replace "
-SELECT
-  a.department_id as department_id,
-  AVG(CASE WHEN b.last_buy <=7 THEN reordered ELSE 0 END) as ui_under7,
-  AVG(CASE WHEN b.last_buy > 7 AND b.last_buy <= 14 THEN reordered ELSE 0 END) as ui_under14,
-  AVG(CASE WHEN b.last_buy > 14 AND b.last_buy <= 21 THEN reordered ELSE 0 END) as ui_under21,
-  AVG(CASE WHEN b.last_buy > 21 AND b.last_buy <= 28 THEN reordered ELSE 0 END) as ui_under28,
-  AVG(CASE WHEN b.last_buy > 28 THEN reordered ELSE 0 END) as ui_over28
-FROM
-  [instacart.df_prior] as a
-LEFT OUTER JOIN
-  [instacart.cum_orders] as b
-ON
-  a.order_id = b.order_id
-GROUP BY
-  department_id
-"
-
-
-
-####
-
 
 bq query --max_rows 20  --allow_large_results --destination_table "instacart.item_recent_reordered" --flatten_results --replace "
 SELECT
